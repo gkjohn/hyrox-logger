@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>HYROX Logger</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #0f0f0f; --surface: #1a1a1a; --card: #222; --border: #333;
+      --text: #e8e8e8; --text2: #999; --accent: #ff6b35; --green: #4caf50;
+      --blue: #42a5f5; --red: #ef5350; --yellow: #ffc107;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding-bottom: 80px; }
+    .nav { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); border-top: 1px solid var(--border); display: flex; z-index: 100; padding-bottom: env(safe-area-inset-bottom); }
+    .nav-btn { flex: 1; padding: 10px 4px 8px; text-align: center; color: var(--text2); font-size: 11px; border: none; background: none; cursor: pointer; }
+    .nav-btn.active { color: var(--accent); }
+    .nav-btn svg { display: block; margin: 0 auto 2px; width: 22px; height: 22px; }
+    .screen { display: none; padding: 16px; }
+    .screen.active { display: block; }
+    .header { text-align: center; padding: 12px 0 16px; }
+    .header h1 { font-size: 18px; font-weight: 700; color: var(--accent); }
+    .header p { font-size: 12px; color: var(--text2); margin-top: 2px; }
+    .week-sel { display: flex; align-items: center; justify-content: center; gap: 16px; margin-bottom: 16px; }
+    .week-sel button { width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 18px; cursor: pointer; }
+    .week-sel .week-num { font-size: 22px; font-weight: 700; min-width: 100px; text-align: center; }
+    .week-sel .phase-tag { font-size: 11px; color: var(--accent); display: block; margin-top: 2px; }
+    .session-card { background: var(--card); border-radius: 12px; padding: 14px 16px; margin-bottom: 10px; cursor: pointer; border-left: 4px solid var(--border); position: relative; }
+    .session-card.done { border-left-color: var(--green); }
+    .session-card .day { font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--text2); letter-spacing: 0.5px; }
+    .session-card .role { font-size: 10px; padding: 2px 8px; border-radius: 10px; display: inline-block; margin-left: 8px; }
+    .role-high { background: rgba(239,83,80,0.2); color: var(--red); }
+    .role-support { background: rgba(255,193,7,0.2); color: var(--yellow); }
+    .role-recovery { background: rgba(66,165,245,0.2); color: var(--blue); }
+    .role-accessory { background: rgba(76,175,80,0.2); color: var(--green); }
+    .role-sim { background: rgba(239,83,80,0.3); color: var(--red); }
+    .session-card .label { font-size: 14px; margin-top: 6px; font-weight: 500; }
+    .session-card .check { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); font-size: 20px; color: var(--green); }
+    .form-section { background: var(--card); border-radius: 12px; padding: 16px; margin-bottom: 12px; }
+    .form-section h3 { font-size: 14px; color: var(--accent); margin-bottom: 12px; font-weight: 600; }
+    .form-row { display: flex; gap: 10px; margin-bottom: 10px; }
+    .form-group { flex: 1; }
+    .form-group label { display: block; font-size: 11px; color: var(--text2); margin-bottom: 4px; }
+    .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 15px; -webkit-appearance: none; }
+    .form-group textarea { height: 60px; resize: none; font-family: inherit; }
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: var(--accent); }
+    .planned { font-size: 11px; color: var(--text2); margin-bottom: 6px; padding: 6px 8px; background: rgba(255,107,53,0.08); border-radius: 6px; }
+    .feel-row { display: flex; gap: 8px; justify-content: center; margin: 8px 0; }
+    .feel-btn { width: 48px; height: 48px; border-radius: 50%; border: 2px solid var(--border); background: var(--surface); font-size: 22px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+    .feel-btn.selected { border-color: var(--accent); background: rgba(255,107,53,0.15); }
+    .btn { display: block; width: 100%; padding: 14px; border-radius: 12px; border: none; font-size: 16px; font-weight: 600; cursor: pointer; margin-top: 12px; }
+    .btn-primary { background: var(--accent); color: white; }
+    .btn-secondary { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
+    .btn:disabled { opacity: 0.5; }
+    .back-btn { background: none; border: none; color: var(--text2); font-size: 14px; padding: 8px 0; cursor: pointer; margin-bottom: 8px; }
+    .toggle-row { display: flex; gap: 8px; }
+    .toggle-btn { flex: 1; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text2); text-align: center; cursor: pointer; font-size: 14px; }
+    .toggle-btn.selected { border-color: var(--green); color: var(--green); background: rgba(76,175,80,0.1); }
+    .toggle-btn.selected-no { border-color: var(--red); color: var(--red); background: rgba(239,83,80,0.1); }
+    .chart-card { background: var(--card); border-radius: 12px; padding: 16px; margin-bottom: 12px; }
+    .chart-card h3 { font-size: 13px; color: var(--text2); margin-bottom: 8px; }
+    .chart-card canvas { max-height: 200px; }
+    .spinner { display: inline-block; width: 20px; height: 20px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.6s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 200; }
+    .loading-overlay .spinner { width: 36px; height: 36px; border-width: 3px; }
+    .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: var(--green); color: white; padding: 10px 24px; border-radius: 20px; font-size: 14px; font-weight: 600; z-index: 300; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+    .toast.show { opacity: 1; }
+    .movement-block { background: var(--surface); border-radius: 8px; padding: 12px; margin-bottom: 10px; }
+    .movement-block .mvmt-name { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+    .stat-row { display: flex; gap: 10px; margin-bottom: 10px; }
+    .stat-card { flex: 1; background: var(--card); border-radius: 12px; padding: 14px; text-align: center; }
+    .stat-card .stat-val { font-size: 24px; font-weight: 700; color: var(--accent); }
+    .stat-card .stat-label { font-size: 11px; color: var(--text2); margin-top: 2px; }
+    .error-msg { background: rgba(239,83,80,0.15); color: var(--red); padding: 12px; border-radius: 8px; margin: 12px 0; font-size: 13px; }
+  </style>
+</head>
+<body>
+
+<div class="toast" id="toast">Saved</div>
+<div class="loading-overlay" id="loader" style="display:none"><div class="spinner"></div></div>
+
+<div class="screen active" id="screen-week">
+  <div class="header">
+    <h1>HYROX Logger</h1>
+    <p>Gautam &middot; Target: Sub 2:00:00</p>
+  </div>
+  <div class="week-sel">
+    <button onclick="changeWeek(-1)">&larr;</button>
+    <div>
+      <div class="week-num" id="weekNum">Week 1</div>
+      <span class="phase-tag" id="phaseTag">Phase 1 &middot; Recovery</span>
+    </div>
+    <button onclick="changeWeek(1)">&rarr;</button>
+  </div>
+  <div id="sessionCards"></div>
+</div>
+
+<div class="screen" id="screen-log">
+  <button class="back-btn" onclick="showScreen('week')">&larr; Back to week</button>
+  <div id="logForm"></div>
+</div>
+
+<div class="screen" id="screen-progress">
+  <div class="header">
+    <h1>Progress</h1>
+    <p>12-week trends</p>
+  </div>
+  <div class="stat-row" id="statRow"></div>
+  <div class="chart-card"><h3>Tuesday Run Pace (min/km)</h3><canvas id="chartPace"></canvas></div>
+  <div class="chart-card"><h3>Sessions Completed per Week</h3><canvas id="chartSessions"></canvas></div>
+  <div class="chart-card"><h3>KB Swing Weight (kg)</h3><canvas id="chartKB"></canvas></div>
+  <div class="chart-card"><h3>Saturday Long Run Distance (km)</h3><canvas id="chartSatDist"></canvas></div>
+  <div class="chart-card"><h3>TGU Weight (kg)</h3><canvas id="chartTGU"></canvas></div>
+</div>
+
+<div class="screen" id="screen-data">
+  <div class="header">
+    <h1>Data</h1>
+    <p>Manage your training data</p>
+  </div>
+  <button class="btn btn-secondary" onclick="runSetup()">Initialize Sheets (first time only)</button>
+  <button class="btn btn-secondary" style="margin-top:10px" onclick="openSheet()">Open Google Sheet</button>
+</div>
+
+<div class="nav">
+  <button class="nav-btn active" onclick="showScreen('week')" id="nav-week">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+    Week
+  </button>
+  <button class="nav-btn" onclick="showScreen('progress')" id="nav-progress">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+    Progress
+  </button>
+  <button class="nav-btn" onclick="showScreen('data')" id="nav-data">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+    Data
+  </button>
+</div>
+
+<script>
+var currentWeek = 1;
+var weekData = null;
+var charts = {};
+
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(function(s) { s.classList.remove('active'); });
+  document.querySelectorAll('.nav-btn').forEach(function(b) { b.classList.remove('active'); });
+  document.getElementById('screen-' + name).classList.add('active');
+  var navBtn = document.getElementById('nav-' + name);
+  if (navBtn) navBtn.classList.add('active');
+  if (name === 'progress') loadProgress();
+}
+
+function showLoading() { document.getElementById('loader').style.display = 'flex'; }
+function hideLoading() { document.getElementById('loader').style.display = 'none'; }
+function showToast(msg) {
+  var t = document.getElementById('toast');
+  t.textContent = msg || 'Saved';
+  t.classList.add('show');
+  setTimeout(function() { t.classList.remove('show'); }, 1500);
+}
+
+function changeWeek(delta) {
+  currentWeek = Math.max(1, Math.min(12, currentWeek + delta));
+  loadWeek();
+}
+
+function loadWeek() {
+  document.getElementById('weekNum').textContent = 'Week ' + currentWeek;
+  showLoading();
+  google.script.run.withSuccessHandler(function(data) {
+    try {
+      if (!data) {
+        hideLoading();
+        document.getElementById('sessionCards').innerHTML = '<div class="error-msg">No data returned from server. Try refreshing.</div>';
+        return;
+      }
+      weekData = data;
+      if (data.error) {
+        hideLoading();
+        document.getElementById('sessionCards').innerHTML = '<div class="error-msg">Server error: ' + data.error + '</div>';
+        return;
+      }
+      document.getElementById('phaseTag').textContent = 'Phase ' + data.phase + ' \u00b7 ' + data.block;
+      renderCards();
+    } catch(err) {
+      document.getElementById('sessionCards').innerHTML = '<div class="error-msg">JS error: ' + err.message + '<br>Stack: ' + err.stack + '</div>';
+    }
+    hideLoading();
+  }).withFailureHandler(function(e) {
+    hideLoading();
+    document.getElementById('sessionCards').innerHTML = '<div class="error-msg">Failed to load: ' + (e.message || e) + '</div>';
+  }).getWeekData(currentWeek);
+}
+
+function renderCards() {
+  var d = weekData;
+  var days = [
+    { key: 'mon', day: 'Monday', label: d.sessions.monLabel, role: 'SUPPORT' },
+    { key: 'tue', day: 'Tuesday', label: d.sessions.tueLabel, role: 'HIGH COST' },
+    { key: 'wed', day: 'Wednesday', label: d.sessions.wedLabel, role: currentWeek <= 4 || currentWeek === 6 ? 'SUPPORT' : currentWeek === 10 ? 'SIM' : 'HIGH COST' },
+    { key: 'thu', day: 'Thursday', label: d.sessions.thuLabel, role: 'RECOVERY' },
+    { key: 'fri', day: 'Friday', label: d.sessions.friLabel, role: 'ACCESSORY' },
+    { key: 'sat', day: 'Saturday', label: d.sessions.satLabel, role: 'RECOVERY' }
+  ];
+
+  var runDays = {};
+  if (d.runs) d.runs.forEach(function(r) { if (r.ActualDist || r.ActualTime) runDays[r.Day] = true; });
+  var kbDays = {};
+  if (d.kb) d.kb.forEach(function(r) { if (r.ActualSets || r.ActualReps || r.ActualKg) kbDays[r.Day] = true; });
+  var stDone = d.station && (d.station.SkiErg || d.station.SledPull || d.station.Row);
+
+  var html = '';
+  days.forEach(function(s) {
+    var done = runDays[s.day] || kbDays[s.day] || (s.key === 'wed' && stDone);
+    var roleClass = s.role === 'HIGH COST' ? 'role-high' : s.role === 'SUPPORT' ? 'role-support' : s.role === 'RECOVERY' ? 'role-recovery' : s.role === 'ACCESSORY' ? 'role-accessory' : 'role-sim';
+    html += '<div class="session-card' + (done ? ' done' : '') + '" onclick="openLog(\'' + s.key + '\')">';
+    html += '<span class="day">' + s.day + '</span><span class="role ' + roleClass + '">' + s.role + '</span>';
+    html += '<div class="label">' + (s.label || '') + '</div>';
+    if (done) html += '<span class="check">\u2713</span>';
+    html += '</div>';
+  });
+  document.getElementById('sessionCards').innerHTML = html;
+}
+
+function openLog(dayKey) {
+  showScreen('log');
+  var d = weekData;
+  var html = '';
+  if (dayKey === 'tue' || dayKey === 'thu' || dayKey === 'sat') {
+    html = buildRunForm(dayKey, d);
+  } else if (dayKey === 'mon' || dayKey === 'fri') {
+    html = buildKBForm(dayKey, d);
+  } else if (dayKey === 'wed') {
+    html = buildStationForm(d);
+  }
+  document.getElementById('logForm').innerHTML = html;
+}
+
+function buildRunForm(dayKey, d) {
+  var dayName = dayKey === 'tue' ? 'Tuesday' : dayKey === 'thu' ? 'Thursday' : 'Saturday';
+  var entry = null;
+  if (d.runs) d.runs.forEach(function(r) { if (r.Day === dayName) entry = r; });
+  if (!entry) return '<p>No planned session found.</p>';
+
+  var h = '<h2 style="font-size:16px;margin-bottom:4px">' + dayName + ' Run</h2>';
+  h += '<p style="font-size:12px;color:var(--text2);margin-bottom:16px">' + (entry.SessionType || 'Easy Run') + '</p>';
+  if (entry.PlannedDist) h += '<div class="planned">Planned: ' + entry.PlannedDist + (entry.TargetPace ? ' @ ' + entry.TargetPace + '/km' : '') + '</div>';
+
+  h += '<div class="form-section"><h3>Session Data</h3>';
+  h += '<div class="form-row">' + fg('Date', 'run-date', 'date', entry.Date || today()) + '</div>';
+  if (entry.BeltSpeed) {
+    h += '<div class="form-row">';
+    h += fg('Belt Speed (km/h)', 'run-belt', 'number', entry.BeltSpeed, 'step="0.1"');
+    h += fg('Target Pace', 'run-tpace', 'text', entry.TargetPace);
+    h += '</div>';
+  }
+  h += '<div class="form-row">';
+  h += fg('Actual Dist (km)', 'run-dist', 'number', entry.ActualDist || '', 'step="0.1"');
+  h += fg('Actual Time (min)', 'run-time', 'number', entry.ActualTime || '', 'step="0.5"');
+  h += '</div>';
+  h += '<div class="form-row">';
+  h += fg('Avg HR (bpm)', 'run-avghr', 'number', entry.AvgHR || '');
+  h += fg('Max HR (bpm)', 'run-maxhr', 'number', entry.MaxHR || '');
+  h += '</div>';
+  h += '<div class="form-group"><label>HR Cap Held?</label>' + toggleYN('run-hrcap', entry.HRCapHeld) + '</div>';
+  h += '</div>';
+
+  h += '<div class="form-section"><h3>How did it feel?</h3>' + feelSelector('run-feel', entry.EffortFeel) + '</div>';
+  h += '<div class="form-section"><div class="form-group"><label>Notes</label><textarea id="run-notes">' + (entry.Notes || '') + '</textarea></div></div>';
+  h += '<button class="btn btn-primary" onclick="saveRun(' + entry._row + ')">Save Run</button>';
+  return h;
+}
+
+function buildKBForm(dayKey, d) {
+  var dayName = dayKey === 'mon' ? 'Monday' : 'Friday';
+  var entries = [];
+  if (d.kb) d.kb.forEach(function(r) { if (r.Day === dayName) entries.push(r); });
+  if (entries.length === 0) return '<p>No planned KB session found.</p>';
+
+  var h = '<h2 style="font-size:16px;margin-bottom:4px">' + dayName + ' KB</h2>';
+  h += '<p style="font-size:12px;color:var(--text2);margin-bottom:16px">' + (entries[0].SessionLabel || '') + '</p>';
+  h += '<div class="form-section"><h3>Date</h3><div class="form-row">' + fg('Date', 'kb-date', 'date', entries[0].Date || today()) + '</div></div>';
+
+  entries.forEach(function(e, i) {
+    var planned = e.PlannedSetsRepsKg || '';
+    var numSets = parseSetsCount(planned);
+    var savedSets = [];
+    if (e.ActualSetData) {
+      if (typeof e.ActualSetData === 'string') {
+        try { savedSets = JSON.parse(e.ActualSetData); } catch(ex) { savedSets = []; }
+      } else if (Array.isArray(e.ActualSetData)) {
+        savedSets = e.ActualSetData;
+      }
+    }
+    var isSwing = e.Movement && e.Movement.indexOf('Swing') >= 0;
+    var isTM = e.Movement && (e.Movement.indexOf('TM') >= 0 || e.Movement.indexOf('Incline') >= 0);
+    var isCarry = e.Movement && e.Movement.indexOf('Carry') >= 0;
+
+    h += '<div class="movement-block">';
+    h += '<div class="mvmt-name">' + (e.Movement || 'Movement') + '</div>';
+    h += '<div class="planned">Planned: ' + planned + '</div>';
+
+    if (isTM) {
+      h += '<div class="form-row">';
+      h += fg('Done?', 'kb-tm-' + i, 'text', (savedSets[0] || {}).reps || '', 'placeholder="e.g. Yes / 4:30"');
+      h += '</div>';
+    } else if (isCarry) {
+      for (var s = 0; s < numSets; s++) {
+        var sv = savedSets[s] || {};
+        h += '<div class="form-row" style="align-items:center">';
+        h += '<span style="font-size:12px;color:var(--text2);min-width:32px">S' + (s+1) + '</span>';
+        h += fg('Dist (m)', 'kb-dist-' + i + '-' + s, 'number', sv.reps || '');
+        h += fg('Kg', 'kb-kg-' + i + '-' + s, 'number', sv.kg || '', 'step="0.5"');
+        h += '</div>';
+      }
+    } else {
+      for (var s = 0; s < numSets; s++) {
+        var sv = savedSets[s] || {};
+        h += '<div class="form-row" style="align-items:center">';
+        h += '<span style="font-size:12px;color:var(--text2);min-width:32px">S' + (s+1) + '</span>';
+        h += fg('Reps', 'kb-reps-' + i + '-' + s, 'number', sv.reps || '');
+        h += fg('Kg', 'kb-kg-' + i + '-' + s, 'number', sv.kg || '', 'step="0.5"');
+        h += '</div>';
+      }
+    }
+
+    if (isSwing) {
+      h += '<div class="form-group" style="margin-top:8px"><label>Apex Float?</label>' + toggleYN('kb-float-' + i, e.FloatCheck) + '</div>';
+    }
+    h += '</div>';
+  });
+
+  if (dayName === 'Monday') {
+    h += '<div class="form-section"><h3>Session Checks</h3>';
+    h += '<div class="form-group"><label>HR stayed below 140?</label>' + toggleYN('kb-hrcap', entries[0].HRCapHeld) + '</div>';
+    h += '<div class="form-group" style="margin-top:10px"><label>Could do this again in 4 hours?</label>' + toggleYN('kb-4hr', '') + '</div></div>';
+  }
+
+  h += '<div class="form-section"><h3>How did it feel?</h3>' + feelSelector('kb-feel', entries[0].EffortFeel) + '</div>';
+  h += '<div class="form-section"><div class="form-group"><label>Notes</label><textarea id="kb-notes">' + (entries[0].Notes || '') + '</textarea></div></div>';
+  h += '<button class="btn btn-primary" onclick="saveKB()">Save KB Session</button>';
+  return h;
+}
+
+function buildStationForm(d) {
+  var entry = d.station || {};
+  var h = '<h2 style="font-size:16px;margin-bottom:4px">Wednesday Station</h2>';
+  h += '<p style="font-size:12px;color:var(--text2);margin-bottom:16px">' + (entry.SessionType || '') + '</p>';
+  h += '<div class="form-section"><h3>Date</h3><div class="form-row">' + fg('Date', 'st-date', 'date', entry.Date || today()) + '</div></div>';
+
+  var stations = ['SkiErg','SledPush','SledPull','BurpeeBJ','Row','Farmers','Sandbag','WallBalls'];
+  var stLabels = ['SkiErg','Sled Push','Sled Pull','Burpee BJ','Row','Farmers Carry','Sandbag Lunges','Wall Balls'];
+  h += '<div class="form-section"><h3>Station Times / Loads</h3>';
+  stations.forEach(function(s, i) {
+    h += '<div class="form-row">' + fg(stLabels[i], 'st-' + s.toLowerCase(), 'text', entry[s] || '', 'placeholder="time / load"') + '</div>';
+  });
+  h += '</div>';
+
+  h += '<div class="form-section"><h3>How did it feel?</h3>' + feelSelector('st-feel', entry.SessionFeel) + '</div>';
+  h += '<div class="form-section"><div class="form-group"><label>Notes</label><textarea id="st-notes">' + (entry.Notes || '') + '</textarea></div></div>';
+  h += '<button class="btn btn-primary" onclick="saveStation(' + (entry._row || 0) + ')">Save Station Session</button>';
+  return h;
+}
+
+function parseSetsCount(planned) {
+  if (!planned) return 1;
+  var m = planned.match(/^(\d+)\s*[x\u00d7]/i);
+  return m ? parseInt(m[1]) : 1;
+}
+
+function fg(label, id, type, value, extra) {
+  return '<div class="form-group"><label>' + label + '</label><input type="' + type + '" id="' + id + '" value="' + (value || '') + '" ' + (extra || '') + '></div>';
+}
+
+function toggleYN(name, value) {
+  var yc = value === 'Yes' || value === true ? ' selected' : '';
+  var nc = value === 'No' || value === false ? ' selected-no' : '';
+  return '<div class="toggle-row"><div class="toggle-btn' + yc + '" onclick="toggleSelect(this,\'' + name + '\',\'Yes\')">Yes</div><div class="toggle-btn' + nc + '" onclick="toggleSelect(this,\'' + name + '\',\'No\')">No</div></div><input type="hidden" id="' + name + '" value="' + (value || '') + '">';
+}
+
+function toggleSelect(el, name, val) {
+  el.parentElement.querySelectorAll('.toggle-btn').forEach(function(b) { b.className = 'toggle-btn'; });
+  el.classList.add(val === 'Yes' ? 'selected' : 'selected-no');
+  document.getElementById(name).value = val;
+}
+
+function feelSelector(name, value) {
+  var faces = ['\ud83d\ude29','\ud83d\ude15','\ud83d\ude10','\ud83d\ude42','\ud83d\udcaa'];
+  var h = '<div class="feel-row">';
+  for (var i = 0; i < 5; i++) {
+    var sel = (value == (i+1)) ? ' selected' : '';
+    h += '<div class="feel-btn' + sel + '" onclick="selectFeel(this,\'' + name + '\',' + (i+1) + ')">' + faces[i] + '</div>';
+  }
+  h += '</div><input type="hidden" id="' + name + '" value="' + (value || '') + '">';
+  return h;
+}
+
+function selectFeel(el, name, val) {
+  el.parentElement.querySelectorAll('.feel-btn').forEach(function(b) { b.classList.remove('selected'); });
+  el.classList.add('selected');
+  document.getElementById(name).value = val;
+}
+
+function today() { return new Date().toISOString().split('T')[0]; }
+function val(id) { var el = document.getElementById(id); return el ? el.value : ''; }
+
+function saveRun(rowNum) {
+  showLoading();
+  var data = {
+    Date: val('run-date'), ActualDist: val('run-dist'), ActualTime: val('run-time'), ActualPace: '',
+    AvgHR: val('run-avghr'), MaxHR: val('run-maxhr'), HRCapHeld: val('run-hrcap'),
+    EffortFeel: val('run-feel'), Notes: val('run-notes'), Week: currentWeek
+  };
+  if (data.ActualDist && data.ActualTime) {
+    var pace = parseFloat(data.ActualTime) / parseFloat(data.ActualDist);
+    var m = Math.floor(pace);
+    var s = Math.round((pace - m) * 60);
+    data.ActualPace = m + ':' + (s < 10 ? '0' : '') + s;
+  }
+  google.script.run.withSuccessHandler(function() {
+    hideLoading(); showToast('Run saved');
+    setTimeout(function() { showScreen('week'); }, 800);
+  }).withFailureHandler(function(e) { hideLoading(); showToast('Error saving'); }).saveRunEntry(rowNum, data);
+}
+
+function saveKB() {
+  showLoading();
+  var entries = [];
+  var d = weekData;
+  var dayName = document.querySelector('#screen-log h2').textContent.indexOf('Monday') >= 0 ? 'Monday' : 'Friday';
+  var kbEntries = [];
+  if (d.kb) d.kb.forEach(function(r) { if (r.Day === dayName) kbEntries.push(r); });
+
+  kbEntries.forEach(function(e, i) {
+    var planned = e.PlannedSetsRepsKg || '';
+    var numSets = parseSetsCount(planned);
+    var isTM = e.Movement && (e.Movement.indexOf('TM') >= 0 || e.Movement.indexOf('Incline') >= 0);
+    var isCarry = e.Movement && e.Movement.indexOf('Carry') >= 0;
+
+    var setData = [];
+    var totalReps = 0;
+    var maxKg = 0;
+    var completedSets = 0;
+
+    if (isTM) {
+      var tmVal = val('kb-tm-' + i);
+      setData.push({ reps: tmVal, kg: '' });
+      completedSets = tmVal ? 1 : 0;
+    } else {
+      for (var s = 0; s < numSets; s++) {
+        var reps = val((isCarry ? 'kb-dist-' : 'kb-reps-') + i + '-' + s);
+        var kg = val('kb-kg-' + i + '-' + s);
+        setData.push({ reps: reps, kg: kg });
+        if (reps || kg) {
+          completedSets++;
+          totalReps += parseInt(reps) || 0;
+          var kgNum = parseFloat(kg) || 0;
+          if (kgNum > maxKg) maxKg = kgNum;
+        }
+      }
+    }
+
+    var data = {
+      Date: val('kb-date'), ActualSets: completedSets || '', ActualReps: isTM ? '' : (totalReps || ''),
+      ActualKg: isTM ? '' : (maxKg || ''), ActualSetData: JSON.stringify(setData),
+      HRCapHeld: val('kb-hrcap') || '', FloatCheck: val('kb-float-' + i) || '',
+      FormBreak: '', EffortFeel: val('kb-feel'), Notes: val('kb-notes'), Week: currentWeek
+    };
+    entries.push({ rowNum: e._row, data: data });
+  });
+
+  google.script.run.withSuccessHandler(function() {
+    hideLoading(); showToast('KB session saved');
+    setTimeout(function() { showScreen('week'); }, 800);
+  }).withFailureHandler(function(e) { hideLoading(); showToast('Error saving'); }).saveKBSession(entries);
+}
+
+function saveStation(rowNum) {
+  showLoading();
+  var data = {
+    Date: val('st-date'), SkiErg: val('st-skierg'), SledPush: val('st-sledpush'),
+    SledPull: val('st-sledpull'), BurpeeBJ: val('st-burpeebj'), Row: val('st-row'),
+    Farmers: val('st-farmers'), Sandbag: val('st-sandbag'), WallBalls: val('st-wallballs'),
+    SessionFeel: val('st-feel'), Notes: val('st-notes'), Week: currentWeek
+  };
+  google.script.run.withSuccessHandler(function() {
+    hideLoading(); showToast('Station saved');
+    setTimeout(function() { showScreen('week'); }, 800);
+  }).withFailureHandler(function(e) { hideLoading(); showToast('Error saving'); }).saveStationEntry(rowNum, data);
+}
+
+function loadProgress() {
+  showLoading();
+  google.script.run.withSuccessHandler(function(data) {
+    hideLoading(); renderProgress(data);
+  }).withFailureHandler(function() { hideLoading(); }).getProgressData();
+}
+
+function renderProgress(data) {
+  var totalSessions = 0;
+  data.sessionsPerWeek.forEach(function(w) { totalSessions += w.count; });
+  var latestPace = data.tuePace.length > 0 ? data.tuePace[data.tuePace.length - 1].pace : '--';
+  var latestSwing = data.kbWeights.length > 0 ? data.kbWeights[data.kbWeights.length - 1].kg + 'kg' : '--';
+
+  document.getElementById('statRow').innerHTML =
+    '<div class="stat-card"><div class="stat-val">' + totalSessions + '</div><div class="stat-label">Sessions Logged</div></div>' +
+    '<div class="stat-card"><div class="stat-val">' + latestPace + '</div><div class="stat-label">Latest Tue Pace</div></div>' +
+    '<div class="stat-card"><div class="stat-val">' + latestSwing + '</div><div class="stat-label">Swing Weight</div></div>';
+
+  var weeks12 = [1,2,3,4,5,6,7,8,9,10,11,12];
+  var chartOpts = {
+    responsive: true, plugins: { legend: { display: false } },
+    scales: { x: { grid: { color: '#222' }, ticks: { color: '#666' } }, y: { grid: { color: '#222' }, ticks: { color: '#666' } } }
+  };
+
+  destroyChart('chartPace');
+  var paceData = new Array(12).fill(null);
+  data.tuePace.forEach(function(p) { paceData[p.week - 1] = p.pace; });
+  charts.chartPace = new Chart(document.getElementById('chartPace'), {
+    type: 'line', data: { labels: weeks12.map(function(w){return 'W'+w;}), datasets: [{ data: paceData, borderColor: '#ff6b35', backgroundColor: 'rgba(255,107,53,0.1)', fill: true, tension: 0.3, pointRadius: 5 }] }, options: chartOpts
+  });
+
+  destroyChart('chartSessions');
+  var sessData = new Array(12).fill(0);
+  data.sessionsPerWeek.forEach(function(w) { sessData[w.week - 1] = w.count; });
+  charts.chartSessions = new Chart(document.getElementById('chartSessions'), {
+    type: 'bar', data: { labels: weeks12.map(function(w){return 'W'+w;}), datasets: [{ data: sessData, backgroundColor: 'rgba(66,165,245,0.6)', borderRadius: 4 }] },
+    options: Object.assign({}, chartOpts, { scales: { x: chartOpts.scales.x, y: { grid: { color: '#222' }, ticks: { color: '#666', stepSize: 1 }, max: 6 } } })
+  });
+
+  destroyChart('chartKB');
+  var kbData = new Array(12).fill(null);
+  data.kbWeights.forEach(function(k) { kbData[k.week - 1] = k.kg; });
+  charts.chartKB = new Chart(document.getElementById('chartKB'), {
+    type: 'line', data: { labels: weeks12.map(function(w){return 'W'+w;}), datasets: [{ data: kbData, borderColor: '#4caf50', backgroundColor: 'rgba(76,175,80,0.1)', fill: true, tension: 0.3, pointRadius: 5 }] }, options: chartOpts
+  });
+
+  destroyChart('chartSatDist');
+  var satData = new Array(12).fill(null);
+  data.satDist.forEach(function(s) { satData[s.week - 1] = s.dist; });
+  charts.chartSatDist = new Chart(document.getElementById('chartSatDist'), {
+    type: 'line', data: { labels: weeks12.map(function(w){return 'W'+w;}), datasets: [{ data: satData, borderColor: '#42a5f5', backgroundColor: 'rgba(66,165,245,0.1)', fill: true, tension: 0.3, pointRadius: 5 }] }, options: chartOpts
+  });
+
+  destroyChart('chartTGU');
+  var tguData = new Array(12).fill(null);
+  data.tguWeight.forEach(function(t) { tguData[t.week - 1] = t.kg; });
+  charts.chartTGU = new Chart(document.getElementById('chartTGU'), {
+    type: 'line', data: { labels: weeks12.map(function(w){return 'W'+w;}), datasets: [{ data: tguData, borderColor: '#ffc107', backgroundColor: 'rgba(255,193,7,0.1)', fill: true, tension: 0.3, pointRadius: 5 }] }, options: chartOpts
+  });
+}
+
+function destroyChart(id) { if (charts[id]) { charts[id].destroy(); charts[id] = null; } }
+
+function runSetup() {
+  showLoading();
+  google.script.run.withSuccessHandler(function() { hideLoading(); showToast('Sheets initialized'); }).withFailureHandler(function(e) { hideLoading(); showToast('Error: ' + e); }).setupSheets();
+}
+
+function openSheet() {
+  google.script.run.withSuccessHandler(function(id) {
+    window.open('https://docs.google.com/spreadsheets/d/' + id, '_blank');
+  }).withFailureHandler(function() {}).getSpreadsheetId();
+}
+
+loadWeek();
+</script>
+</body>
+</html>
