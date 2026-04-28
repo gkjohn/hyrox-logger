@@ -464,6 +464,36 @@ var TUE_REP_CONFIG = {
   13: { reps: 3, repLabel: '400m', unit: 'time (sec)' }
 };
 
+// Wednesday planned content per week (V6.1)
+var WED_PLANNED = {
+  1:  { description: 'Technique Walk-Through. Zero fatigue intent \u2014 scouting only.',
+        stations: { SkiErg: '3\u00d7100m posture/elbow drive', SledPull: '5\u00d710m minimal load', Row: '3\u00d7100m foot strap & catch' } },
+  2:  { description: 'Light Station Practice \u2014 all real movements at low volume. Pattern practice, not capacity.',
+        stations: { SkiErg: '3\u00d7150m easy', SledPull: '6\u00d715m light load', Farmers: '3\u00d730m @ 16-20kg', Sandbag: '3\u00d720m light front-rack', WallBalls: '5\u00d710 catch rhythm' } },
+  3:  { description: 'Sled Pull Focus + Stations. HR < 155 throughout. Log sled load + time.',
+        stations: { SkiErg: '3\u00d7250m', SledPull: '6\u00d720m moderate, 90s rest', Row: '3\u00d7250m', Farmers: '2\u00d740m moderate', Sandbag: '3\u00d725m moderate', WallBalls: '3\u00d715 unbroken' } },
+  4:  { description: 'Even-Effort Brick A \u2014 pacing discipline, not fitness. Sequence: Run 1km \u2192 SkiErg 300m \u2192 Run 1km \u2192 Row 300m. Match Template HR \u00b15 bpm on each station.',
+        stations: { SkiErg: '300m (match template HR)', Row: '300m (match template HR)' } },
+  5:  { description: 'Even-Effort Brick B \u2014 one extra round. Sequence: Run 1km \u2192 SkiErg 400m \u2192 Run 1km \u2192 Row 400m \u2192 Run 1km.',
+        stations: { SkiErg: '400m (match template HR)', Row: '400m (match template HR)' } },
+  6:  { description: '\u2b50 Benchmark TT + Sled Pull @ Race Load. Record both TT times. Film one sled pull rep.',
+        stations: { SkiErg: '500m TIME TRIAL (target sub 2:30)', Row: '500m TIME TRIAL (target sub 2:30)', SledPull: '4\u00d725m @ 109kg race load (log per-rep below)' } },
+  7:  { description: 'Quarter Station Rotation \u2014 all 8 stations at quarter race volume. Then Sled Pull race-load block.',
+        stations: { SkiErg: '250m', SledPush: '12m', SledPull: '12m rotation + 4\u00d725m @ race load (block)', BurpeeBJ: '20m', Row: '250m', Farmers: '50m @ 2\u00d724kg', Sandbag: '25m', WallBalls: '17 reps' } },
+  8:  { description: '\u2b50 Hard Brick \u2014 Race Sequence. 1km @ 7:15-7:30 \u2192 Sled Pull 25m race load. 1km \u2192 Sandbag Lunges 50m. 1km \u2192 Wall Balls 25 reps. The third run on dead legs is the stimulus.',
+        stations: { SledPull: '25m @ race load (per round)', Sandbag: '50m (per round)', WallBalls: '25 reps (per round)' } },
+  9:  { description: 'Even-Effort Brick C + Sled Pull. Sequence: Run 1km \u2192 SkiErg 500m \u2192 Run 1km \u2192 Row 500m. Then Sled Pull block, Wall Ball CAPACITY TEST (5\u00d720 unbroken \u2014 race-role test), Farmers Carry.',
+        stations: { SkiErg: '500m (match template HR)', Row: '500m (match template HR)', SledPull: '4\u00d725m @ race load', Farmers: '2\u00d7100m @ 2\u00d724kg', WallBalls: '5\u00d720 unbroken CAPACITY TEST' } },
+  10: { description: '\u2b50 FULL HYROX SIMULATION with Kabeer. 8 runs (1km each) at race pace 7:30-8:00/km. All stations at full volume + race loads. Time the full event.',
+        stations: { SkiErg: 'Full station', SledPush: 'Full station', SledPull: 'Full station @ race load', BurpeeBJ: 'Full station', Row: 'Full station', Farmers: 'Full station', Sandbag: 'Full station', WallBalls: 'Full station' } },
+  11: { description: 'Light Station Touch-Up + Light Sled Pull. NOT race load \u2014 taper. Maintenance only.',
+        stations: { SkiErg: '3\u00d7200m easy', Row: '3\u00d7200m easy', WallBalls: '3\u00d715', SledPull: '3\u00d715m moderate (taper, not race load)', Farmers: '2\u00d730m @ 20kg' } },
+  12: { description: 'Very Light Touch. Preserving, not building. Walk out.',
+        stations: { SkiErg: '2\u00d7150m easy', Row: '2\u00d7150m easy', WallBalls: '2\u00d710', SledPull: '2\u00d715m light' } },
+  13: { description: 'Race Touch \u2014 final pre-race tune. Done. Nothing else today, Thursday, or Friday.',
+        stations: { SkiErg: '2\u00d7100m easy', Row: '2\u00d7100m easy', WallBalls: '2\u00d710', SledPull: '2\u00d710m light' } }
+};
+
 function showScreen(name) {
   document.querySelectorAll('.screen').forEach(function(s) { s.classList.remove('active'); });
   document.querySelectorAll('.nav-btn').forEach(function(b) { b.classList.remove('active'); });
@@ -708,8 +738,14 @@ function buildStationForm(d) {
 
   h += '<div class="form-section"><h3>Date</h3><div class="form-row">' + fg('Date', 'st-date', 'date', entry.Date || today()) + '</div></div>';
 
-  // Sled Pull at Race Load \u2014 only for W6+
-  if (currentWeek >= 6 && currentWeek <= 11) {
+  // Session description (V6.1 planned content)
+  var plan = WED_PLANNED[currentWeek];
+  if (plan && plan.description) {
+    h += '<div class="planned" style="font-size:13px;line-height:1.5;padding:10px 12px">' + plan.description + '</div>';
+  }
+
+  // Sled Pull at Race Load \u2014 W6-W10 (W11 uses moderate, not race load)
+  if (currentWeek >= 6 && currentWeek <= 10) {
     var sledTimes = [];
     if (entry.SledPullTimes) {
       try { sledTimes = (typeof entry.SledPullTimes === 'string') ? JSON.parse(entry.SledPullTimes) : entry.SledPullTimes; } catch(e) { sledTimes = []; }
@@ -730,8 +766,15 @@ function buildStationForm(d) {
   var stations = ['SkiErg','SledPush','SledPull','BurpeeBJ','Row','Farmers','Sandbag','WallBalls'];
   var stLabels = ['SkiErg','Sled Push','Sled Pull','Burpee BJ','Row','Farmers Carry','Sandbag Lunges','Wall Balls'];
   h += '<div class="form-section"><h3>Station Times / Loads</h3>';
+  var plannedStations = (plan && plan.stations) || {};
   stations.forEach(function(s, i) {
-    h += '<div class="form-row">' + fg(stLabels[i], 'st-' + s.toLowerCase(), 'text', entry[s] || '', 'placeholder="time / load / reps"') + '</div>';
+    var p = plannedStations[s] || '';
+    h += '<div class="form-group" style="margin-bottom:12px">';
+    h += '<label>' + stLabels[i];
+    if (p) h += ' <span style="color:var(--accent);font-weight:normal">&middot; ' + p + '</span>';
+    h += '</label>';
+    h += '<input type="text" id="st-' + s.toLowerCase() + '" value="' + (entry[s] || '') + '" placeholder="time / load / reps">';
+    h += '</div>';
   });
   h += '</div>';
 
