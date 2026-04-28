@@ -1,6 +1,6 @@
-// HYROX 13-Week V6.1 Training Logger — Google Apps Script Backend
-// Race: July 26, 2026 — Target: Sub 2:00:00
-// Paste into Extensions → Apps Script in your Google Sheet
+// HYROX 13-Week V6.1 Training Logger \u2014 Google Apps Script Backend
+// Race: July 26, 2026 \u2014 Target: Sub 2:00:00
+// Paste into Extensions -> Apps Script in your Google Sheet
 
 function doGet() {
   return HtmlService.createHtmlOutputFromFile('Index')
@@ -9,7 +9,7 @@ function doGet() {
     .addMetaTag('viewport', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no');
 }
 
-// ─── Sheet Setup ───────────────────────────────────────────────────────────────
+// --- Sheet Setup ---------------------------------------------------------------
 function setupSheets() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
 
@@ -23,14 +23,14 @@ function setupSheets() {
       [3,2,'Pace Calibration','KB Pood Jump 24kg','200m Repeats CALIBRATION','Sled Pull Focus + Stations','Easy 5km','TGU + Accessory','Long 6km Easy (deload)',0,'',''],
       [4,2,'Swing Ownership','KB 24kg Consolidation','Fast 8-4-2s','Even-Effort Brick A','Easy 6.5km','TGU + Accessory','Long 12km Progressive',0,'',''],
       [5,2,'Swing Ownership','KB 24kg Ownership Check','Rolling 400s','Even-Effort Brick B','Easy 6km','TGU + Windmill','Long 13km Easy',0,'',''],
-      [6,3,'1H Swing + Specificity','1H Swing + TM Finish','Easy 6.5km','⭐ Benchmark TT + Sled Pull@Race','Easy 6km','TGU + Accessory (no incline)','Long 14km Progressive Repeat',0,'',''],
+      [6,3,'1H Swing + Specificity','1H Swing + TM Finish','Easy 6.5km','\u2b50 Benchmark TT + Sled Pull@Race','Easy 6km','TGU + Accessory (no incline)','Long 14km Progressive Repeat',0,'',''],
       [7,3,'1H Swing + Specificity','1H Swing + TM Finish','400s into 200s','Quarter Rotation + Sled Pull','Easy 6.5km','TGU + Accessory (no incline)','Long 15km Easy (Peak 1)',0,'',''],
-      [8,4,'Race-Pattern Strength','Phase 4: Front Squat (-30% vol)','5km TIME TRIAL','⭐ Hard Brick (sled@race)','Easy 5km','TGU + Race-Pattern + Wall Ball Cap','Long 9km Easy (deload)',0,'',''],
+      [8,4,'Race-Pattern Strength','Phase 4: Front Squat (-30% vol)','5km TIME TRIAL','\u2b50 Hard Brick (sled@race)','Easy 5km','TGU + Race-Pattern + Wall Ball Cap','Long 9km Easy (deload)',0,'',''],
       [9,4,'Race-Pattern Strength','Phase 4: Heavy DL + Rack Lunge','Easy 7.5km','Even-Effort Brick C + Sled Pull (Wall Ball Test)','Easy 7.5km','TGU + Race-Pattern (no incline)','Long 13km Easy',0,'',''],
-      [10,4,'Race-Pattern Strength','Phase 4: Reduced + TM','Easy 7.5km','⭐ FULL HYROX SIMULATION','Easy 7km','TGU + Light Race-Pattern (no incline)','Long 14km Progressive',0,'',''],
+      [10,4,'Race-Pattern Strength','Phase 4: Reduced + TM','Easy 7.5km','\u2b50 FULL HYROX SIMULATION','Easy 7km','TGU + Light Race-Pattern (no incline)','Long 14km Progressive',0,'',''],
       [11,4,'Last Hard Week','KB Taper + TM','Drop Set 7km','Light Touch-Up + Light Sled','Easy 6km','TGU Light (no incline)','Long 15km Easy (Peak 2)',0,'',''],
       [12,4,'Pre-Taper','KB Pre-Taper','Easy 5km','Very Light Touch','Easy 5km','TGU Minimal','Long 8km Easy',0,'',''],
-      [13,4,'Race Week','Race Wake-Up','Easy + 3x400m strides','Race Touch','REST','Final Touch','🏁 RACE Jul 26',0,'','']
+      [13,4,'Race Week','Race Wake-Up','Easy + 3x400m strides','Race Touch','REST','Final Touch','\ud83c\udfc1 RACE Jul 26',0,'','']
     ];
     dash.getRange(2, 1, dashData.length, dashData[0].length).setValues(dashData);
     dash.getRange(1, 1, 1, 12).setFontWeight('bold');
@@ -91,24 +91,24 @@ function getOrCreateSheet(ss, name) {
   return sheet;
 }
 
-// ─── Data Builders ─────────────────────────────────────────────────────────────
+// --- Data Builders -------------------------------------------------------------
 function buildRunLogData() {
   // Tuesday paces are EXPECTED scenario (V6.1 fallback table default)
   // [week, sessionType, role, plannedDist, targetPace, hrCap]
   var tueData = {
     1:  ['Easy Run',         'RECOVERY',  '5.5km easy',                     '',                          148],
     2:  ['Easy Run',         'RECOVERY',  '6.5km easy',                     '',                          148],
-    3:  ['200m Repeats',     'CALIBRATION','6×200m + 200m jog (4.5km)',     '5:00-5:30/km (calibration)', ''],
+    3:  ['200m Repeats',     'CALIBRATION','6\u00d7200m + 200m jog (4.5km)',     '5:00-5:30/km (calibration)', ''],
     4:  ['Fast 8-4-2s',      'HIGH COST', '8min/4min/2min descending (5km)','8min:6:30-7:00 / 4min:6:00-6:30 / 2min:5:30-6:00', ''],
-    5:  ['Rolling 400s',     'HIGH COST', '6×400m + 200m jog (6km)',        '5:30-6:00/km',              ''],
+    5:  ['Rolling 400s',     'HIGH COST', '6\u00d7400m + 200m jog (6km)',        '5:30-6:00/km',              ''],
     6:  ['Easy Run',         'RECOVERY',  '6.5km easy',                     '',                          148],
-    7:  ['400s into 200s',   'HIGH COST', '4×(400m+200m) (6km)',            '400s:5:30-6:00 / 200s:5:00-5:30', ''],
+    7:  ['400s into 200s',   'HIGH COST', '4\u00d7(400m+200m) (6km)',            '400s:5:30-6:00 / 200s:5:00-5:30', ''],
     8:  ['5km TIME TRIAL',   'HIGH COST', '5km max sustainable',            'sub 5:30/km avg',           ''],
     9:  ['Easy Run',         'RECOVERY',  '7.5km easy',                     '',                          150],
     10: ['Easy Run',         'RECOVERY',  '7.5km easy',                     '',                          148],
     11: ['Drop Set',         'HIGH COST', '1.5/1.5/1.5km (7km total)',      '6:15 / 6:30 / 7:00 EXPECTED', ''],
     12: ['Easy Run',         'RECOVERY',  '5km easy',                       '',                          145],
-    13: ['Race Pace Feel',   'RECOVERY',  '3km easy + 3×400m + 1km cool',   '5:30-6:00/km on 400s',      '']
+    13: ['Race Pace Feel',   'RECOVERY',  '3km easy + 3\u00d7400m + 1km cool',   '5:30-6:00/km on 400s',      '']
   };
   // Thursday & Saturday distances
   var thuDist = {1:'5km',2:'5km',3:'5km',4:'6.5km',5:'6km',6:'6km',7:'6.5km',8:'5km',9:'7.5km',10:'7km',11:'6km',12:'5km',13:'REST'};
@@ -125,7 +125,7 @@ function buildRunLogData() {
     10: ['Progressive',   '14km (5 easy + 5 @6:30-7:00 + 4 @6:00-6:30)',    ''],
     11: ['Easy Peak 2',   '15km easy',                                      155],
     12: ['Easy',          '8km easy',                                       148],
-    13: ['🏁 RACE DAY',   'July 26',                                        '']
+    13: ['\ud83c\udfc1 RACE DAY',   'July 26',                                        '']
   };
 
   var rows = [];
@@ -141,37 +141,37 @@ function buildRunLogData() {
 
 function buildKBLogData() {
   // Each entry: [movement, plannedSetsRepsKg]
-  // Phase 1 (W1-2): Foundation — Pavel hinge, 16kg swings
+  // Phase 1 (W1-2): Foundation \u2014 Pavel hinge, 16kg swings
   // Phase 2 (W3-5): Pood jump to 24kg, ownership
   // Phase 3 (W6-7): 1H swing + TM finish
   // Phase 4 (W8-13): Race-pattern strength (no Friday Press in V6.1)
   var weeks = {
-    1:  { mon:[['KB Deadlift','3×5 @ 32kg'],['KB Goblet Squat','3×5 @ 24-28kg'],['2H Swing','10×10 @ 16kg'],['KB Press','3×6e @ 16-20kg'],['KB Row','3×6e @ 20-24kg']],
-          fri:[['TGU','3×1e @ 8kg'],['KB Row','3×10e @ 20kg'],['KB Carry','2×30m @ 16-20kg']] },
-    2:  { mon:[['KB Deadlift','3×5 @ 32kg'],['KB Goblet Squat','3×5 @ 28kg'],['2H Swing','10×10 @ 16kg'],['KB Press','3×6e @ 20kg'],['KB Row','3×6e @ 24kg']],
-          fri:[['TGU','3×1e @ 10-12kg'],['KB Row','3×10e @ 20-24kg'],['KB Carry','2×30m @ 16-20kg']] },
-    3:  { mon:[['KB Deadlift','3×5 @ 32-36kg'],['KB Goblet Squat','3×5 @ 28-32kg'],['2H Swing','10×10 @ 24kg POOD JUMP'],['KB Press','3×6e @ 20-24kg'],['KB Row','3×6e @ 24-28kg']],
-          fri:[['TGU','3×2e @ 12-16kg'],['KB Row','3×12e @ 20-24kg'],['KB Carry','3×30m @ 16-20kg']] },
-    4:  { mon:[['KB Deadlift','3×5 @ 32-36kg'],['KB Goblet Squat','3×5 @ 32kg'],['2H Swing','10×10 @ 24kg'],['KB Press','3×6e @ 20-24kg'],['KB Row','3×6e @ 24-28kg']],
-          fri:[['TGU','3×2e @ 14-16kg'],['KB Row','3×12e @ 24kg'],['KB Carry','3×30m @ 20-24kg']] },
-    5:  { mon:[['KB Deadlift','3×5 @ 36kg'],['KB Goblet Squat','3×5 @ 32kg'],['2H Swing','10×10 @ 24kg ownership'],['KB Press','3×6e @ 24kg'],['KB Row','3×6e @ 28-32kg']],
-          fri:[['TGU','3×3e @ 16-20kg'],['KB Row','3×12e @ 24kg'],['KB Windmill','2×5e @ 12kg']] },
-    6:  { mon:[['KB Goblet Squat','3×5 @ 32kg'],['2H Swing (warm-up)','2×8 @ 24kg'],['1H Swing','5×5e @ 24kg'],['KB Press','3×8e @ 24kg'],['KB Row','3×8e @ 28-32kg'],['TM Finish','5min @ 8.0km/h']],
-          fri:[['TGU','3×3e @ 16-20kg'],['KB Row','3×10e @ 24-28kg'],['KB Carry','2×30m @ 20-24kg']] },
-    7:  { mon:[['KB Goblet Squat','3×5 @ 32-36kg'],['2H Swing (warm-up)','2×8 @ 24kg'],['1H Swing','5×5e @ 24kg'],['KB Press','3×8e @ 24kg'],['KB Row','3×8e @ 28-32kg'],['TM Finish','5min @ 8.0km/h']],
-          fri:[['TGU','3×3e @ 20-24kg'],['KB Row','3×10e @ 28-32kg'],['KB Carry','3×30m @ 24kg']] },
-    8:  { mon:[['Front Squat (double KB)','4×5 @ 24-28kg/hand'],['2H Swing','3×8 @ 24-32kg (32 optional)'],['1-arm Carry','3×40m @ 24-28kg/side'],['KB Press','3×6e @ 20-24kg'],['KB Row','3×6e @ 28-32kg'],['TM Finish','5min @ 8.0km/h']],
-          fri:[['TGU','3×3e @ 20-24kg'],['Bulgarian Split Squat','3×6/leg @ 16kg'],['Heavy 1-arm Row','3×8/side @ 22-24kg'],['1-arm Carry','2×30m @ 20-24kg'],['Wall Ball Capacity','4×20 unbroken @ 90s rest']] },
-    9:  { mon:[['Heavy Deadlift (double KB)','4×5 @ 28-32kg/hand'],['Rack Lunge','3×10/leg @ 20-24kg/hand'],['2H Swing','3×8 @ 24-28kg'],['KB Press','3×8e @ 24kg'],['KB Row','3×8e @ 28-32kg']],
-          fri:[['TGU','3×3e @ 20-24kg PEAK'],['Bulgarian Split Squat','3×8/leg @ 16kg'],['Heavy 1-arm Row','3×10/side @ 24kg'],['1-arm Carry','2×30m @ 24kg']] },
-    10: { mon:[['Front Squat (double KB)','3×5 @ 24kg/hand'],['2H Swing','2×8 @ 24kg'],['1-arm Carry','2×40m @ 24kg/side'],['KB Press','2×6e @ 24kg'],['KB Row','2×6e @ 28kg'],['TM Finish','3min @ 7.8km/h']],
-          fri:[['TGU','3×3e @ 24kg PEAK'],['Bulgarian Split Squat','2×6/leg @ 16kg'],['Heavy 1-arm Row','2×8/side @ 22kg']] },
-    11: { mon:[['Front Squat (double KB)','2×5 @ 20-24kg/hand'],['2H Swing','2×8 @ 20-24kg'],['1-arm Carry','2×30m @ 20kg/side'],['KB Press','2×6e @ 20kg'],['KB Row','2×6e @ 24-28kg'],['TM Finish','3min @ 7.8km/h']],
-          fri:[['TGU','2×2e @ 20kg'],['Bulgarian Split Squat','2×6/leg @ 16kg'],['Heavy 1-arm Row','2×8/side @ 20-22kg']] },
-    12: { mon:[['2H Swing','2×8 @ 20kg'],['KB Press','2×6e @ 20kg'],['KB Row','2×6e @ 24kg'],['TM Finish','3min @ 7.5km/h']],
-          fri:[['TGU','1×2e @ 16kg']] },
-    13: { mon:[['2H Swing','2×5 @ 16-20kg'],['TGU check','1×1e @ 12kg'],['KB Press','2×6e @ 16kg'],['TM Finish','3min @ 7.5km/h']],
-          fri:[['TGU','1×1e @ 12kg']] }
+    1:  { mon:[['KB Deadlift','3\u00d75 @ 32kg'],['KB Goblet Squat','3\u00d75 @ 24-28kg'],['2H Swing','10\u00d710 @ 16kg'],['KB Press','3\u00d76e @ 16-20kg'],['KB Row','3\u00d76e @ 20-24kg']],
+          fri:[['TGU','3\u00d71e @ 8kg'],['KB Row','3\u00d710e @ 20kg'],['KB Carry','2\u00d730m @ 16-20kg']] },
+    2:  { mon:[['KB Deadlift','3\u00d75 @ 32kg'],['KB Goblet Squat','3\u00d75 @ 28kg'],['2H Swing','10\u00d710 @ 16kg'],['KB Press','3\u00d76e @ 20kg'],['KB Row','3\u00d76e @ 24kg']],
+          fri:[['TGU','3\u00d71e @ 10-12kg'],['KB Row','3\u00d710e @ 20-24kg'],['KB Carry','2\u00d730m @ 16-20kg']] },
+    3:  { mon:[['KB Deadlift','3\u00d75 @ 32-36kg'],['KB Goblet Squat','3\u00d75 @ 28-32kg'],['2H Swing','10\u00d710 @ 24kg POOD JUMP'],['KB Press','3\u00d76e @ 20-24kg'],['KB Row','3\u00d76e @ 24-28kg']],
+          fri:[['TGU','3\u00d72e @ 12-16kg'],['KB Row','3\u00d712e @ 20-24kg'],['KB Carry','3\u00d730m @ 16-20kg']] },
+    4:  { mon:[['KB Deadlift','3\u00d75 @ 32-36kg'],['KB Goblet Squat','3\u00d75 @ 32kg'],['2H Swing','10\u00d710 @ 24kg'],['KB Press','3\u00d76e @ 20-24kg'],['KB Row','3\u00d76e @ 24-28kg']],
+          fri:[['TGU','3\u00d72e @ 14-16kg'],['KB Row','3\u00d712e @ 24kg'],['KB Carry','3\u00d730m @ 20-24kg']] },
+    5:  { mon:[['KB Deadlift','3\u00d75 @ 36kg'],['KB Goblet Squat','3\u00d75 @ 32kg'],['2H Swing','10\u00d710 @ 24kg ownership'],['KB Press','3\u00d76e @ 24kg'],['KB Row','3\u00d76e @ 28-32kg']],
+          fri:[['TGU','3\u00d73e @ 16-20kg'],['KB Row','3\u00d712e @ 24kg'],['KB Windmill','2\u00d75e @ 12kg']] },
+    6:  { mon:[['KB Goblet Squat','3\u00d75 @ 32kg'],['2H Swing (warm-up)','2\u00d78 @ 24kg'],['1H Swing','5\u00d75e @ 24kg'],['KB Press','3\u00d78e @ 24kg'],['KB Row','3\u00d78e @ 28-32kg'],['TM Finish','5min @ 8.0km/h']],
+          fri:[['TGU','3\u00d73e @ 16-20kg'],['KB Row','3\u00d710e @ 24-28kg'],['KB Carry','2\u00d730m @ 20-24kg']] },
+    7:  { mon:[['KB Goblet Squat','3\u00d75 @ 32-36kg'],['2H Swing (warm-up)','2\u00d78 @ 24kg'],['1H Swing','5\u00d75e @ 24kg'],['KB Press','3\u00d78e @ 24kg'],['KB Row','3\u00d78e @ 28-32kg'],['TM Finish','5min @ 8.0km/h']],
+          fri:[['TGU','3\u00d73e @ 20-24kg'],['KB Row','3\u00d710e @ 28-32kg'],['KB Carry','3\u00d730m @ 24kg']] },
+    8:  { mon:[['Front Squat (double KB)','4\u00d75 @ 24-28kg/hand'],['2H Swing','3\u00d78 @ 24-32kg (32 optional)'],['1-arm Carry','3\u00d740m @ 24-28kg/side'],['KB Press','3\u00d76e @ 20-24kg'],['KB Row','3\u00d76e @ 28-32kg'],['TM Finish','5min @ 8.0km/h']],
+          fri:[['TGU','3\u00d73e @ 20-24kg'],['Bulgarian Split Squat','3\u00d76/leg @ 16kg'],['Heavy 1-arm Row','3\u00d78/side @ 22-24kg'],['1-arm Carry','2\u00d730m @ 20-24kg'],['Wall Ball Capacity','4\u00d720 unbroken @ 90s rest']] },
+    9:  { mon:[['Heavy Deadlift (double KB)','4\u00d75 @ 28-32kg/hand'],['Rack Lunge','3\u00d710/leg @ 20-24kg/hand'],['2H Swing','3\u00d78 @ 24-28kg'],['KB Press','3\u00d78e @ 24kg'],['KB Row','3\u00d78e @ 28-32kg']],
+          fri:[['TGU','3\u00d73e @ 20-24kg PEAK'],['Bulgarian Split Squat','3\u00d78/leg @ 16kg'],['Heavy 1-arm Row','3\u00d710/side @ 24kg'],['1-arm Carry','2\u00d730m @ 24kg']] },
+    10: { mon:[['Front Squat (double KB)','3\u00d75 @ 24kg/hand'],['2H Swing','2\u00d78 @ 24kg'],['1-arm Carry','2\u00d740m @ 24kg/side'],['KB Press','2\u00d76e @ 24kg'],['KB Row','2\u00d76e @ 28kg'],['TM Finish','3min @ 7.8km/h']],
+          fri:[['TGU','3\u00d73e @ 24kg PEAK'],['Bulgarian Split Squat','2\u00d76/leg @ 16kg'],['Heavy 1-arm Row','2\u00d78/side @ 22kg']] },
+    11: { mon:[['Front Squat (double KB)','2\u00d75 @ 20-24kg/hand'],['2H Swing','2\u00d78 @ 20-24kg'],['1-arm Carry','2\u00d730m @ 20kg/side'],['KB Press','2\u00d76e @ 20kg'],['KB Row','2\u00d76e @ 24-28kg'],['TM Finish','3min @ 7.8km/h']],
+          fri:[['TGU','2\u00d72e @ 20kg'],['Bulgarian Split Squat','2\u00d76/leg @ 16kg'],['Heavy 1-arm Row','2\u00d78/side @ 20-22kg']] },
+    12: { mon:[['2H Swing','2\u00d78 @ 20kg'],['KB Press','2\u00d76e @ 20kg'],['KB Row','2\u00d76e @ 24kg'],['TM Finish','3min @ 7.5km/h']],
+          fri:[['TGU','1\u00d72e @ 16kg']] },
+    13: { mon:[['2H Swing','2\u00d75 @ 16-20kg'],['TGU check','1\u00d71e @ 12kg'],['KB Press','2\u00d76e @ 16kg'],['TM Finish','3min @ 7.5km/h']],
+          fri:[['TGU','1\u00d71e @ 12kg']] }
   };
 
   var labelMap = { 1:'Foundation',2:'Foundation',3:'Pace Calibration',4:'Swing Ownership',5:'Swing Ownership',6:'1H Swing + Specificity',7:'1H Swing + Specificity',8:'Phase 4 - Race Pattern',9:'Phase 4 - Race Pattern',10:'Phase 4 - Reduced',11:'Last Hard Week',12:'Pre-Taper',13:'Race Week' };
@@ -198,11 +198,11 @@ function buildStationLogData() {
     [3, 'Sled Pull Focus + Stations',            'SUPPORT'],
     [4, 'Even-Effort Brick A',                   'SUPPORT'],
     [5, 'Even-Effort Brick B',                   'SUPPORT'],
-    [6, '⭐ Benchmark TT + Sled Pull Race Load', 'HIGH COST'],
+    [6, '\u2b50 Benchmark TT + Sled Pull Race Load', 'HIGH COST'],
     [7, 'Quarter Rotation + Sled Pull',          'SUPPORT'],
-    [8, '⭐ Hard Brick - Race Sequence',         'HIGH COST'],
+    [8, '\u2b50 Hard Brick - Race Sequence',         'HIGH COST'],
     [9, 'Even-Effort Brick C + Sled Pull (Wall Ball Capacity Test)', 'SUPPORT'],
-    [10,'⭐ FULL HYROX SIMULATION with Kabeer',  'SIM'],
+    [10,'\u2b50 FULL HYROX SIMULATION with Kabeer',  'SIM'],
     [11,'Light Touch-Up + Light Sled Pull',      'SUPPORT'],
     [12,'Very Light Touch',                      'RECOVERY'],
     [13,'Race Touch',                            'RECOVERY']
@@ -214,7 +214,7 @@ function buildStationLogData() {
   return rows;
 }
 
-// ─── Helper: sanitize Date objects and time strings ────────────────────────────
+// --- Helper: sanitize Date objects and time strings ----------------------------
 function sanitizeRow(row) {
   for (var key in row) {
     var v = row[key];
@@ -238,7 +238,7 @@ function sanitizeRow(row) {
   return row;
 }
 
-// ─── API: Read week data ───────────────────────────────────────────────────────
+// --- API: Read week data -------------------------------------------------------
 function getWeekData(week) {
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -322,7 +322,7 @@ function getWeekData(week) {
   }
 }
 
-// ─── API: Save entries ─────────────────────────────────────────────────────────
+// --- API: Save entries ---------------------------------------------------------
 function saveRunEntry(rowNum, data) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sheet = ss.getSheetByName('RunLog');
@@ -408,7 +408,7 @@ function updateSessionCount(week) {
   }
 }
 
-// ─── API: HRV Daily Log ────────────────────────────────────────────────────────
+// --- API: HRV Daily Log --------------------------------------------------------
 function saveHRVEntry(data) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sheet = ss.getSheetByName('HRVLog');
@@ -476,7 +476,7 @@ function getTodayHRV() {
   }
 }
 
-// ─── API: Progress data ────────────────────────────────────────────────────────
+// --- API: Progress data --------------------------------------------------------
 function getProgressData() {
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
