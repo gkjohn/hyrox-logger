@@ -3,7 +3,7 @@
 
 function doGet() {
   return HtmlService.createHtmlOutputFromFile('Index')
-    .setTitle('HYROX Logger')
+    .setTitle("Gautam's HYROX Logger [v2.25.04]")
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
     .addMetaTag('viewport', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no');
 }
@@ -19,16 +19,16 @@ function setupSheets() {
     var dashData = [
       [1,1,'Recovery','Neural KB','Easy','Technique Walk-Through','Easy Run','TGU + Accessory','6km easy',0,'',''],
       [2,1,'Recovery','Neural KB','Easy','Light Station Work','Easy Run','TGU + Accessory','6km easy',0,'',''],
-      [3,2,'Base','Neural KB','Tempo A1 @ 7.5 km/h','Station Work - Sled Pull Focus','Easy Run','TGU + Accessory','8km easy',0,'',''],
-      [4,2,'Base','Neural KB','Tempo A2 @ 7.5 km/h','Even-Effort Brick A','Easy Run','TGU + Accessory','9km easy',0,'',''],
-      [5,2,'Base','Neural KB','Tempo B1 @ 7.8 km/h','Benchmark Day (SkiErg + Row TT)','Easy Run','TGU + Accessory','10km easy',0,'',''],
-      [6,3,'Threshold','Neural KB + TM Finish','Tempo B2 @ 7.8 km/h','Even-Effort Brick B','Easy Run','TGU + Accessory + Incline','10km easy',0,'',''],
-      [7,3,'Threshold','Neural KB + TM Finish','Threshold C1 @ 8.0 km/h','Full Station Rotation','Easy Run','TGU + Accessory + Incline','11km easy',0,'',''],
-      [8,3,'Threshold','Neural KB + TM Finish','Intervals @ 8.3 km/h','Hard Brick - Race Sequence','Easy Run','TGU + Accessory + Incline','10km easy',0,'',''],
-      [9,3,'Threshold','Neural KB + TM Finish','Threshold Peak @ 8.0/8.2','Benchmark Retest','Easy Run','TGU + Accessory + Incline','12km easy',0,'',''],
-      [10,4,'Peak/Sim','Neural KB + TM Finish','Race Sharp @ 8.3 km/h','FULL SIMULATION','Easy Run','TGU + Accessory + Incline','7km easy',0,'',''],
-      [11,4,'Taper','Neural KB + TM Finish','Strides @ 8.5 km/h','Light Station Touch-Up','Easy Run','TGU + Accessory + Incline','7km easy',0,'',''],
-      [12,4,'Race Week','Neural KB + TM Finish','Race Feel @ 8.5 km/h','Final Light Touch','Easy Run','TGU + Accessory + Incline','RACE DAY',0,'','']
+      [3,2,'Base','Neural KB','Tempo A1 @ 9.0 km/h','Station Work - Sled Pull Focus','Easy Run','TGU + Accessory','8km easy',0,'',''],
+      [4,2,'Base','Neural KB','Tempo A2 @ 9.0 km/h','Even-Effort Brick A','Easy Run','TGU + Accessory','9km easy',0,'',''],
+      [5,2,'Base','Neural KB','Tempo B1 @ 9.5 km/h','Benchmark Day (SkiErg + Row TT)','Easy Run','TGU + Accessory','10km easy',0,'',''],
+      [6,3,'Threshold','Neural KB + TM Finish','Tempo B2 @ 9.5 km/h','Even-Effort Brick B','Easy Run','TGU + Accessory + Incline','10km easy',0,'',''],
+      [7,3,'Threshold','Neural KB + TM Finish','Threshold C1 @ 9.5 km/h','Full Station Rotation','Easy Run','TGU + Accessory + Incline','11km easy',0,'',''],
+      [8,3,'Threshold','Neural KB + TM Finish','Intervals @ 10.5 km/h','Hard Brick - Race Sequence','Easy Run','TGU + Accessory + Incline','10km easy',0,'',''],
+      [9,3,'Threshold','Neural KB + TM Finish','Threshold Peak @ 10.0 km/h','Benchmark Retest','Easy Run','TGU + Accessory + Incline','12km easy',0,'',''],
+      [10,4,'Peak/Sim','Neural KB + TM Finish','Race Sharp @ 10.5 km/h','FULL SIMULATION','Easy Run','TGU + Accessory + Incline','7km easy',0,'',''],
+      [11,4,'Taper','Neural KB + TM Finish','Strides @ 11.0 km/h','Light Station Touch-Up','Easy Run','TGU + Accessory + Incline','7km easy',0,'',''],
+      [12,4,'Race Week','Neural KB + TM Finish','Race Feel @ 11.0 km/h','Final Light Touch','Easy Run','TGU + Accessory + Incline','RACE DAY',0,'','']
     ];
     dash.getRange(2, 1, dashData.length, dashData[0].length).setValues(dashData);
     dash.getRange(1, 1, 1, 12).setFontWeight('bold');
@@ -90,16 +90,16 @@ function buildRunLogData() {
     // [week, tuType, tuRole, tuDist, tuBelt, tuPace, thuDist, satDist]
     [1,'Easy','HIGH COST','4-5km easy','','','4-5km easy','6km easy'],
     [2,'Easy','HIGH COST','5km easy','','','5km easy','6km easy'],
-    [3,'Tempo A1','HIGH COST','2x10min',7.5,'8:00','6km easy','8km easy'],
-    [4,'Tempo A2','HIGH COST','3x10min',7.5,'8:00','6km easy','9km easy'],
-    [5,'Tempo B1','HIGH COST','3x10min',7.8,'7:42','6km easy','10km easy'],
-    [6,'Tempo B2','HIGH COST','4x8min',7.8,'7:42','6km easy','10km easy'],
-    [7,'Threshold C1','HIGH COST','20min continuous',8.0,'7:30','6km easy','11km easy'],
-    [8,'Intervals','HIGH COST','6x1km',8.3,'7:13','6km easy','10km easy'],
-    [9,'Threshold Peak','HIGH COST','30min continuous','8.0/8.2','7:30','6km easy','12km easy'],
-    [10,'Race Sharp','HIGH COST','4x1km',8.3,'7:13','6km easy','7km easy'],
-    [11,'Strides','HIGH COST','Easy + 3x200m strides',8.5,'7:03','6km easy','7km easy'],
-    [12,'Race Feel','HIGH COST','Easy + 3x400m',8.5,'7:03','6km easy','3km easy']
+    [3,'Tempo A1','HIGH COST','2x10min',9.0,'6:40','6km easy','8km easy'],
+    [4,'Tempo A2','HIGH COST','3x10min',9.0,'6:40','6km easy','9km easy'],
+    [5,'Tempo B1','HIGH COST','3x10min',9.5,'6:19','6km easy','10km easy'],
+    [6,'Tempo B2','HIGH COST','4x8min',9.5,'6:19','6km easy','10km easy'],
+    [7,'Threshold C1','HIGH COST','20min continuous',9.5,'6:19','6km easy','11km easy'],
+    [8,'Intervals','HIGH COST','6x1km',10.5,'5:43','6km easy','10km easy'],
+    [9,'Threshold Peak','HIGH COST','30min continuous',10.0,'6:00','6km easy','12km easy'],
+    [10,'Race Sharp','HIGH COST','4x1km',10.5,'5:43','6km easy','7km easy'],
+    [11,'Strides','HIGH COST','Easy + 3x200m strides',11.0,'5:27','6km easy','7km easy'],
+    [12,'Race Feel','HIGH COST','Easy + 3x400m',11.0,'5:27','6km easy','3km easy']
   ];
   weeks.forEach(function(w) {
     rows.push([w[0],'Tuesday','',w[1],w[2],w[3],w[4],w[5],'','','','','','','','']);
@@ -113,31 +113,31 @@ function buildKBLogData() {
   var rows = [];
   var weeks = [
     // Week 1
-    {w:1, mon:[['KB Deadlift','3x5x28-32kg'],['KB Press','3x6x16-20kg'],['KB Row','3x6x20-24kg']],
+    {w:1, mon:[['KB Deadlift','3x5x28-32kg'],['2H Swing','10x10x16kg'],['KB Press','3x6x16-20kg'],['KB Row','3x6x20-24kg']],
            fri:[['TGU','3x1e x 8kg'],['KB Press','3x10x16kg'],['KB Row','3x10x20kg'],['KB Carry','2x30m x 16-20kg']]},
     // Week 2
-    {w:2, mon:[['KB Deadlift','3x5x32kg'],['KB Press','3x6x20kg'],['KB Row','3x6x24kg']],
+    {w:2, mon:[['KB Deadlift','3x5x32kg'],['2H Swing','10x10x16kg'],['KB Press','3x6x20kg'],['KB Row','3x6x24kg']],
            fri:[['TGU','3x1e x 10-12kg'],['KB Press','3x10x16-20kg'],['KB Row','3x10x20-24kg'],['KB Carry','2x30m x 16-20kg']]},
     // Week 3
-    {w:3, mon:[['KB Deadlift','3x5x32-36kg'],['2H Swing','3x8x24kg'],['KB Press','3x6x20-24kg'],['KB Row','3x6x24-28kg']],
+    {w:3, mon:[['KB Deadlift','3x5x32-36kg'],['2H Swing','10x10x24kg'],['KB Press','3x6x20-24kg'],['KB Row','3x6x24-28kg']],
            fri:[['TGU','3x2e x 12-16kg'],['KB Press','3x10x16-20kg'],['KB Row','3x12x20-24kg'],['KB Carry','3x30m x 16-20kg']]},
     // Week 4
-    {w:4, mon:[['KB Deadlift','3x5x32-36kg'],['2H Swing','3x8x24kg'],['KB Press','3x6x20-24kg'],['KB Row','3x6x24-28kg']],
+    {w:4, mon:[['KB Deadlift','3x5x32-36kg'],['2H Swing','10x10x24kg'],['KB Press','3x6x20-24kg'],['KB Row','3x6x24-28kg']],
            fri:[['TGU','3x2e x 14-16kg'],['KB Press','3x10x20kg'],['KB Row','3x12x24kg'],['KB Carry','3x30m x 20-24kg']]},
     // Week 5
-    {w:5, mon:[['KB Deadlift','3x5x36kg'],['2H Swing','3x8x24kg'],['KB Press','3x6x24kg'],['KB Row','3x6x28-32kg']],
+    {w:5, mon:[['KB Deadlift','3x5x36kg'],['2H Swing','10x10x24kg'],['KB Press','3x6x24kg'],['KB Row','3x6x28-32kg']],
            fri:[['TGU','3x3e x 16-20kg'],['KB Press','3x10x20kg'],['KB Row','3x12x24kg'],['KB Windmill','2x5e x 12kg']]},
     // Week 6
-    {w:6, mon:[['2H Swing (warm-up)','2x8x24kg'],['1H Swing','3x5e x 24kg'],['KB Press','3x8x24kg'],['KB Row','3x8x28-32kg'],['TM Finish','5min @ 8.0km/h']],
+    {w:6, mon:[['2H Swing (warm-up)','2x8x24kg'],['1H Swing','5x5e x 24kg'],['KB Press','3x8x24kg'],['KB Row','3x8x28-32kg'],['TM Finish','5min @ 8.0km/h']],
            fri:[['TGU','3x3e x 16-20kg'],['KB Press','3x8x20-24kg'],['KB Row','3x10x24-28kg'],['KB Carry','2x30m x 20-24kg'],['Incline TM','3x3min @ 10-12%']]},
     // Week 7
-    {w:7, mon:[['2H Swing (warm-up)','2x8x24kg'],['1H Swing','3x5e x 24kg'],['KB Press','3x8x24kg'],['KB Row','3x8x28-32kg'],['TM Finish','5min @ 8.0km/h']],
+    {w:7, mon:[['2H Swing (warm-up)','2x8x24kg'],['1H Swing','5x5e x 24kg'],['KB Press','3x8x24kg'],['KB Row','3x8x28-32kg'],['TM Finish','5min @ 8.0km/h']],
            fri:[['TGU','3x3e x 20-24kg'],['KB Press','3x8x24kg'],['KB Row','3x10x28-32kg'],['KB Carry','3x30m x 24kg'],['Incline TM','4x3min @ 10-12%']]},
     // Week 8
-    {w:8, mon:[['2H Swing','3x8x32kg'],['Clean','3x3e x 24kg'],['KB Press','3x8x24-28kg'],['KB Row','3x8x32-36kg'],['TM Finish','5min @ 8.0km/h']],
+    {w:8, mon:[['2H Swing','5x8x32kg'],['Clean','3x3e x 24kg'],['KB Press','3x8x24-28kg'],['KB Row','3x8x32-36kg'],['TM Finish','5min @ 8.0km/h']],
            fri:[['TGU','3x3e x 20-24kg'],['KB Press','3x8x20kg'],['KB Row','3x10x24kg'],['Incline TM','3x3min @ 10-12%']]},
     // Week 9
-    {w:9, mon:[['2H Swing','3x8x32kg'],['Clean','3x3e x 24kg'],['KB Press','3x8x24-28kg'],['KB Row','3x8x32-36kg'],['TM Finish','5min @ 8.2km/h']],
+    {w:9, mon:[['2H Swing','5x8x32kg'],['Clean','3x3e x 24kg'],['KB Press','3x8x24-28kg'],['KB Row','3x8x32-36kg'],['TM Finish','5min @ 8.2km/h']],
            fri:[['TGU','3x3e x 24kg'],['KB Press','3x8x20-24kg'],['KB Row','3x10x24-28kg'],['Incline TM','3x3min @ 10-12%']]},
     // Week 10
     {w:10, mon:[['2H Swing','3x8x28kg'],['Clean','3x3e x 24kg'],['KB Press','3x6x24kg'],['KB Row','3x6x28-32kg'],['TM Finish','5min @ 7.8km/h']],
