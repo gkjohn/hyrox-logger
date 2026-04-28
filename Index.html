@@ -765,10 +765,15 @@ function buildStationForm(d) {
   // Standard station fields \u2014 show only relevant ones based on week's session type
   var stations = ['SkiErg','SledPush','SledPull','BurpeeBJ','Row','Farmers','Sandbag','WallBalls'];
   var stLabels = ['SkiErg','Sled Push','Sled Pull','Burpee BJ','Row','Farmers Carry','Sandbag Lunges','Wall Balls'];
-  h += '<div class="form-section"><h3>Station Times / Loads</h3>';
   var plannedStations = (plan && plan.stations) || {};
+  var hasPlanned = stations.some(function(s) { return plannedStations[s]; });
+  // Show only the stations that are part of this week's plan; if none defined, show all 8.
+  h += '<div class="form-section"><h3>Station Times / Loads</h3>';
   stations.forEach(function(s, i) {
     var p = plannedStations[s] || '';
+    var hasValue = entry[s];
+    // Skip stations with no planned text and no existing value (when plan exists)
+    if (hasPlanned && !p && !hasValue) return;
     h += '<div class="form-group" style="margin-bottom:12px">';
     h += '<label>' + stLabels[i];
     if (p) h += ' <span style="color:var(--accent);font-weight:normal">&middot; ' + p + '</span>';
@@ -776,6 +781,22 @@ function buildStationForm(d) {
     h += '<input type="text" id="st-' + s.toLowerCase() + '" value="' + (entry[s] || '') + '" placeholder="time / load / reps">';
     h += '</div>';
   });
+  // Add an "extras" toggle so users can log unplanned station work if needed
+  if (hasPlanned) {
+    var hiddenStations = stations.filter(function(s) { return !plannedStations[s] && !entry[s]; });
+    if (hiddenStations.length > 0) {
+      h += '<div style="font-size:11px;color:var(--text2);margin-top:8px;cursor:pointer" onclick="document.getElementById(\'extras-\'+currentWeek).style.display=\'block\';this.style.display=\'none\'">+ show ' + hiddenStations.length + ' other station' + (hiddenStations.length > 1 ? 's' : '') + ' (if you did extras)</div>';
+      h += '<div id="extras-' + currentWeek + '" style="display:none;margin-top:8px">';
+      hiddenStations.forEach(function(s) {
+        var idx = stations.indexOf(s);
+        h += '<div class="form-group" style="margin-bottom:12px">';
+        h += '<label>' + stLabels[idx] + ' <span style="color:var(--text2);font-size:10px">(not in plan)</span></label>';
+        h += '<input type="text" id="st-' + s.toLowerCase() + '" value="" placeholder="time / load / reps">';
+        h += '</div>';
+      });
+      h += '</div>';
+    }
+  }
   h += '</div>';
 
   // Brick-specific fields
