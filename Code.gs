@@ -4,7 +4,7 @@
 
 function doGet() {
   return HtmlService.createHtmlOutputFromFile('Index')
-    .setTitle("Gautam's HYROX Logger [v6.1]")
+    .setTitle("Gautam's HYROX Logger [v6.1.5]")
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
     .addMetaTag('viewport', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no');
 }
@@ -215,6 +215,11 @@ function buildStationLogData() {
 }
 
 // --- Helper: sanitize Date objects and time strings ----------------------------
+var _cachedTZ = null;
+function getTZ() {
+  if (!_cachedTZ) _cachedTZ = SpreadsheetApp.getActiveSpreadsheet().getSpreadsheetTimeZone();
+  return _cachedTZ;
+}
 function sanitizeRow(row) {
   for (var key in row) {
     var v = row[key];
@@ -229,7 +234,7 @@ function sanitizeRow(row) {
           row[key] = m + ':' + (s < 10 ? '0' : '') + s;
         }
       } else {
-        row[key] = v.toISOString().split('T')[0];
+        row[key] = Utilities.formatDate(v, getTZ(), 'yyyy-MM-dd');
       }
     } else if (v === null || v === undefined) {
       row[key] = '';
@@ -458,14 +463,15 @@ function getHRVData(limit) {
 
 function getTodayHRV() {
   try {
-    var today = new Date().toISOString().split('T')[0];
     var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var tz = ss.getSpreadsheetTimeZone();
+    var today = Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd');
     var sheet = ss.getSheetByName('HRVLog');
     if (!sheet) return null;
     var data = sheet.getDataRange().getValues();
     for (var i = 1; i < data.length; i++) {
       var d = data[i][0];
-      if (d instanceof Date) d = d.toISOString().split('T')[0];
+      if (d instanceof Date) d = Utilities.formatDate(d, tz, 'yyyy-MM-dd');
       if (String(d).indexOf(today) === 0) {
         return { Date: today, HRV: data[i][1] || '', OuraReadiness: data[i][2] || '', RestingHR: data[i][3] || '', SleepScore: data[i][4] || '', Notes: String(data[i][5] || '') };
       }

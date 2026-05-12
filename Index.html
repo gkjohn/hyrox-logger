@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>Gautam's HYROX Logger [v6.1]</title>
+  <title>Gautam's HYROX Logger [v6.1.5]</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
   <style>
     :root {
@@ -119,7 +119,7 @@
 <div class="screen active" id="screen-week">
   <div class="header">
     <h1>Gautam's HYROX Logger</h1>
-    <p>v6.1 &middot; Race: Jul 26 &middot; Sub 2:00:00</p>
+    <p>v6.1.5 &middot; Race: Jul 26 &middot; Sub 2:00:00</p>
   </div>
   <div id="hrvBanner"></div>
   <div class="week-sel">
@@ -434,7 +434,7 @@ if (IS_LOCAL) {
               cb(sorted);
             },
             getTodayHRV: function() {
-              var t = (new Date()).toISOString().split('T')[0];
+              var t = today();
               for (var i = 0; i < LOCAL_HRV.length; i++) if (LOCAL_HRV[i].Date === t) { cb(LOCAL_HRV[i]); return; }
               cb(null);
             },
@@ -447,7 +447,16 @@ if (IS_LOCAL) {
   };
 }
 
-var currentWeek = 1;
+var PROGRAM_START = new Date(2026, 3, 27); // Apr 27, 2026 (W1 Mon) — month is 0-indexed
+function getCurrentWeek() {
+  var msPerDay = 1000 * 60 * 60 * 24;
+  var now = new Date();
+  var startMidnight = new Date(PROGRAM_START.getFullYear(), PROGRAM_START.getMonth(), PROGRAM_START.getDate());
+  var nowMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  var daysSince = Math.floor((nowMidnight - startMidnight) / msPerDay);
+  return Math.max(1, Math.min(13, Math.floor(daysSince / 7) + 1));
+}
+var currentWeek = getCurrentWeek();
 var weekData = null;
 var charts = {};
 var TOTAL_WEEKS = 13;
@@ -598,14 +607,23 @@ function openLog(dayKey) {
   showScreen('log');
   var d = weekData;
   var html = '';
+  var ctx = '';
   if (dayKey === 'tue' || dayKey === 'thu' || dayKey === 'sat') {
+    var dayName = dayKey === 'tue' ? 'Tuesday' : dayKey === 'thu' ? 'Thursday' : 'Saturday';
     html = buildRunForm(dayKey, d);
+    ctx = 'run-W' + currentWeek + '-' + dayName;
   } else if (dayKey === 'mon' || dayKey === 'fri') {
+    var dayName = dayKey === 'mon' ? 'Monday' : 'Friday';
     html = buildKBForm(dayKey, d);
+    ctx = 'kb-W' + currentWeek + '-' + dayName;
   } else if (dayKey === 'wed') {
     html = buildStationForm(d);
+    ctx = 'station-W' + currentWeek;
   }
   document.getElementById('logForm').innerHTML = html;
+  window._currentDraftCtx = ctx;
+  restoreDraft(ctx);
+  wireDraftAutoSave(ctx);
 }
 
 function buildRunForm(dayKey, d) {
@@ -852,8 +870,43 @@ function selectFeel(el, name, val) {
   document.getElementById(name).value = val;
 }
 
-function today() { return new Date().toISOString().split('T')[0]; }
+function today() {
+  var d = new Date();
+  return d.getFullYear() + '-' +
+    String(d.getMonth() + 1).padStart(2, '0') + '-' +
+    String(d.getDate()).padStart(2, '0');
+}
 function val(id) { var el = document.getElementById(id); return el ? el.value : ''; }
+
+// ─── Draft auto-save ───────────────────────────────────────────────────────────
+function draftKey(context) { return 'draft_' + context; }
+function saveDraft(context) {
+  var fields = {};
+  document.querySelectorAll('#logForm input, #logForm textarea, #hrvForm input, #hrvForm textarea').forEach(function(el) {
+    if (el.id) fields[el.id] = el.value;
+  });
+  try { localStorage.setItem(draftKey(context), JSON.stringify({ ts: Date.now(), fields: fields })); } catch(e) {}
+}
+function restoreDraft(context) {
+  try {
+    var raw = localStorage.getItem(draftKey(context));
+    if (!raw) return;
+    var d = JSON.parse(raw);
+    if (Date.now() - d.ts > 24 * 60 * 60 * 1000) { localStorage.removeItem(draftKey(context)); return; }
+    Object.keys(d.fields).forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el && d.fields[id] !== '' && d.fields[id] != null) el.value = d.fields[id];
+    });
+  } catch(e) {}
+}
+function clearDraft(context) { try { localStorage.removeItem(draftKey(context)); } catch(e) {} }
+function wireDraftAutoSave(context) {
+  var h = function() { saveDraft(context); };
+  document.querySelectorAll('#logForm input, #logForm textarea, #hrvForm input, #hrvForm textarea').forEach(function(el) {
+    el.addEventListener('input', h);
+    el.addEventListener('change', h);
+  });
+}
 
 function saveRun(rowNum, repCount) {
   showLoading();
@@ -882,6 +935,7 @@ function saveRun(rowNum, repCount) {
   }
   google.script.run.withSuccessHandler(function() {
     hideLoading(); showToast('Run saved');
+    if (window._currentDraftCtx) clearDraft(window._currentDraftCtx);
     setTimeout(function() { showScreen('week'); loadWeek(); }, 800);
   }).withFailureHandler(function() { hideLoading(); showToast('Error saving'); }).saveRunEntry(rowNum, data);
 }
@@ -942,6 +996,7 @@ function saveKB() {
 
   google.script.run.withSuccessHandler(function() {
     hideLoading(); showToast('KB session saved');
+    if (window._currentDraftCtx) clearDraft(window._currentDraftCtx);
     setTimeout(function() { showScreen('week'); loadWeek(); }, 800);
   }).withFailureHandler(function() { hideLoading(); showToast('Error saving'); }).saveKBSession(entries);
 }
@@ -975,6 +1030,7 @@ function saveStation(rowNum) {
   };
   google.script.run.withSuccessHandler(function() {
     hideLoading(); showToast('Station saved');
+    if (window._currentDraftCtx) clearDraft(window._currentDraftCtx);
     setTimeout(function() { showScreen('week'); loadWeek(); }, 800);
   }).withFailureHandler(function() { hideLoading(); showToast('Error saving'); }).saveStationEntry(rowNum, data);
 }
@@ -982,8 +1038,8 @@ function saveStation(rowNum) {
 // \u2500\u2500\u2500 HRV \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 function loadHRV() {
   showLoading();
-  google.script.run.withSuccessHandler(function(today) {
-    renderHRVForm(today);
+  google.script.run.withSuccessHandler(function(entry) {
+    renderHRVForm(entry);
     google.script.run.withSuccessHandler(function(history) {
       renderHRVHistory(history);
       renderHRVCharts(history);
@@ -992,9 +1048,9 @@ function loadHRV() {
   }).withFailureHandler(function() { hideLoading(); }).getTodayHRV();
 }
 
-function renderHRVForm(today) {
-  var t = today || {};
-  var todayDate = (new Date()).toISOString().split('T')[0];
+function renderHRVForm(entry) {
+  var t = entry || {};
+  var todayDate = today();
   var h = '<h3>Today &middot; ' + todayDate + (t.HRV ? ' \u2713' : '') + '</h3>';
   h += '<div class="form-row">';
   h += fg('HRV (ms)', 'hrv-val', 'number', t.HRV || '');
@@ -1007,6 +1063,10 @@ function renderHRVForm(today) {
   h += '<div class="form-group"><label>Notes</label><textarea id="hrv-notes">' + (t.Notes || '') + '</textarea></div>';
   h += '<button class="btn btn-primary" onclick="saveHRV()">Save Today\u2019s HRV</button>';
   document.getElementById('hrvForm').innerHTML = h;
+  var ctx = 'hrv-' + todayDate;
+  window._currentHRVCtx = ctx;
+  restoreDraft(ctx);
+  wireDraftAutoSave(ctx);
 }
 
 function saveHRV() {
@@ -1021,6 +1081,7 @@ function saveHRV() {
   };
   google.script.run.withSuccessHandler(function() {
     hideLoading(); showToast('HRV saved');
+    if (window._currentHRVCtx) clearDraft(window._currentHRVCtx);
     loadHRV();
   }).withFailureHandler(function() { hideLoading(); showToast('Error saving'); }).saveHRVEntry(data);
 }
