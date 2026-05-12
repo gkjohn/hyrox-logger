@@ -1,4 +1,4 @@
-// HYROX 13-Week V6.1 Training Logger \u2014 Google Apps Script Backend
+// HYROX 13-Week V6.1 Training Logger | App v6.1.5 \u2014 Google Apps Script Backend
 // Race: July 26, 2026 \u2014 Target: Sub 2:00:00
 // Paste into Extensions -> Apps Script in your Google Sheet
 
