@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>Gautam's HYROX Logger [v6.1.5]</title>
+  <title>Gautam's HYROX Logger [v6.1.6]</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
   <style>
     :root {
@@ -35,6 +35,12 @@
 
     .session-card { background: var(--card); border-radius: 12px; padding: 14px 16px; margin-bottom: 10px; cursor: pointer; border-left: 4px solid var(--border); position: relative; }
     .session-card.done { border-left-color: var(--green); }
+    .session-card.skipped { border-left-color: #ff9800; background: rgba(255,152,0,0.05); }
+    .session-card.skipped .label { color: var(--text2); }
+    .session-card.skipped .skipped-badge { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); font-size: 10px; font-weight: 700; letter-spacing: 0.5px; color: #ff9800; background: rgba(255,152,0,0.15); padding: 4px 8px; border-radius: 10px; }
+    .session-card.skipped .skip-reason { font-size: 11px; color: var(--text2); margin-top: 4px; font-style: italic; }
+    .btn-skip { display: block; width: 100%; padding: 12px; border-radius: 12px; border: 1px solid #ff9800; background: transparent; color: #ff9800; font-size: 14px; font-weight: 500; cursor: pointer; margin-top: 8px; }
+    .btn-skip:active { background: rgba(255,152,0,0.1); }
     .session-card .day { font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--text2); letter-spacing: 0.5px; }
     .session-card .role { font-size: 10px; padding: 2px 8px; border-radius: 10px; display: inline-block; margin-left: 8px; }
     .role-high { background: rgba(239,83,80,0.2); color: var(--red); }
@@ -119,7 +125,7 @@
 <div class="screen active" id="screen-week">
   <div class="header">
     <h1>Gautam's HYROX Logger</h1>
-    <p>v6.1.5 &middot; Race: Jul 26 &middot; Sub 2:00:00</p>
+    <p>v6.1.6 &middot; Race: Jul 26 &middot; Sub 2:00:00</p>
   </div>
   <div id="hrvBanner"></div>
   <div class="week-sel">
@@ -314,48 +320,51 @@ if (IS_LOCAL) {
               // Runs
               var t = V6_TUE[week];
               var savedTue = LOCAL_DATA['run_'+week+'_Tuesday'] || {};
-              result.runs.push({ Week:week, Day:'Tuesday', Date:savedTue.Date||'', SessionType:t[0], Role:t[1], PlannedDist:t[2], TargetPace:t[3], HRCap:t[4], ActualDist:savedTue.ActualDist||'', ActualTime:savedTue.ActualTime||'', ActualPace:savedTue.ActualPace||'', AvgHR:savedTue.AvgHR||'', MaxHR:savedTue.MaxHR||'', HRCapHeld:savedTue.HRCapHeld||'', EffortFeel:savedTue.EffortFeel||'', Notes:savedTue.Notes||'', _row:week*100+1 });
+              result.runs.push({ Week:week, Day:'Tuesday', Date:savedTue.Date||'', SessionType:t[0], Role:t[1], PlannedDist:t[2], TargetPace:t[3], HRCap:t[4], ActualDist:savedTue.ActualDist||'', ActualTime:savedTue.ActualTime||'', ActualPace:savedTue.ActualPace||'', AvgHR:savedTue.AvgHR||'', MaxHR:savedTue.MaxHR||'', HRCapHeld:savedTue.HRCapHeld||'', EffortFeel:savedTue.EffortFeel||'', Notes:savedTue.Notes||'', Skipped:savedTue.Skipped||'', SkipReason:savedTue.SkipReason||'', _row:week*100+1 });
               var savedThu = LOCAL_DATA['run_'+week+'_Thursday'] || {};
-              result.runs.push({ Week:week, Day:'Thursday', Date:savedThu.Date||'', SessionType:'Easy Run', Role:'RECOVERY', PlannedDist:V6_THU[week], TargetPace:'', HRCap:150, ActualDist:savedThu.ActualDist||'', ActualTime:savedThu.ActualTime||'', ActualPace:savedThu.ActualPace||'', AvgHR:savedThu.AvgHR||'', MaxHR:savedThu.MaxHR||'', HRCapHeld:savedThu.HRCapHeld||'', EffortFeel:savedThu.EffortFeel||'', Notes:savedThu.Notes||'', _row:week*100+2 });
+              result.runs.push({ Week:week, Day:'Thursday', Date:savedThu.Date||'', SessionType:'Easy Run', Role:'RECOVERY', PlannedDist:V6_THU[week], TargetPace:'', HRCap:150, ActualDist:savedThu.ActualDist||'', ActualTime:savedThu.ActualTime||'', ActualPace:savedThu.ActualPace||'', AvgHR:savedThu.AvgHR||'', MaxHR:savedThu.MaxHR||'', HRCapHeld:savedThu.HRCapHeld||'', EffortFeel:savedThu.EffortFeel||'', Notes:savedThu.Notes||'', Skipped:savedThu.Skipped||'', SkipReason:savedThu.SkipReason||'', _row:week*100+2 });
               var s = V6_SAT[week];
               var savedSat = LOCAL_DATA['run_'+week+'_Saturday'] || {};
-              result.runs.push({ Week:week, Day:'Saturday', Date:savedSat.Date||'', SessionType:s[0], Role:'RECOVERY', PlannedDist:s[1], TargetPace:'', HRCap:s[2], ActualDist:savedSat.ActualDist||'', ActualTime:savedSat.ActualTime||'', ActualPace:savedSat.ActualPace||'', AvgHR:savedSat.AvgHR||'', MaxHR:savedSat.MaxHR||'', HRCapHeld:savedSat.HRCapHeld||'', EffortFeel:savedSat.EffortFeel||'', Notes:savedSat.Notes||'', _row:week*100+3 });
+              result.runs.push({ Week:week, Day:'Saturday', Date:savedSat.Date||'', SessionType:s[0], Role:'RECOVERY', PlannedDist:s[1], TargetPace:'', HRCap:s[2], ActualDist:savedSat.ActualDist||'', ActualTime:savedSat.ActualTime||'', ActualPace:savedSat.ActualPace||'', AvgHR:savedSat.AvgHR||'', MaxHR:savedSat.MaxHR||'', HRCapHeld:savedSat.HRCapHeld||'', EffortFeel:savedSat.EffortFeel||'', Notes:savedSat.Notes||'', Skipped:savedSat.Skipped||'', SkipReason:savedSat.SkipReason||'', _row:week*100+3 });
               // KB
               var kbW = V6_KB[week] || { mon:[], fri:[] };
               var labelMap = { 1:'Foundation',2:'Foundation',3:'Pace Calibration',4:'Swing Ownership',5:'Swing Ownership',6:'1H Swing + Specificity',7:'1H Swing + Specificity',8:'Phase 4 - Race Pattern',9:'Phase 4 - Race Pattern',10:'Phase 4 - Reduced',11:'Last Hard Week',12:'Pre-Taper',13:'Race Week' };
               var label = labelMap[week];
               kbW.mon.forEach(function(m, i) {
                 var saved = LOCAL_DATA['kb_'+week+'_Monday_'+i] || {};
-                result.kb.push({ Week:week, Day:'Monday', Date:saved.Date||'', Role:'SUPPORT', SessionLabel: label+' - Mon KB', Movement:m[0], PlannedSetsRepsKg:m[1], ActualSets:saved.ActualSets||'', ActualReps:saved.ActualReps||'', ActualKg:saved.ActualKg||'', ActualSetData:saved.ActualSetData||'[]', HRCapHeld:saved.HRCapHeld||'', FloatCheck:saved.FloatCheck||'', FormBreak:'', EffortFeel:saved.EffortFeel||'', Notes:saved.Notes||'', _row:week*1000+i });
+                result.kb.push({ Week:week, Day:'Monday', Date:saved.Date||'', Role:'SUPPORT', SessionLabel: label+' - Mon KB', Movement:m[0], PlannedSetsRepsKg:m[1], ActualSets:saved.ActualSets||'', ActualReps:saved.ActualReps||'', ActualKg:saved.ActualKg||'', ActualSetData:saved.ActualSetData||'[]', HRCapHeld:saved.HRCapHeld||'', FloatCheck:saved.FloatCheck||'', FormBreak:'', EffortFeel:saved.EffortFeel||'', Notes:saved.Notes||'', Skipped:saved.Skipped||'', SkipReason:saved.SkipReason||'', _row:week*1000+i });
               });
               kbW.fri.forEach(function(m, i) {
                 var saved = LOCAL_DATA['kb_'+week+'_Friday_'+i] || {};
-                result.kb.push({ Week:week, Day:'Friday', Date:saved.Date||'', Role:'ACCESSORY', SessionLabel: label+' - Fri Yin', Movement:m[0], PlannedSetsRepsKg:m[1], ActualSets:saved.ActualSets||'', ActualReps:saved.ActualReps||'', ActualKg:saved.ActualKg||'', ActualSetData:saved.ActualSetData||'[]', HRCapHeld:'', FloatCheck:saved.FloatCheck||'', FormBreak:'', EffortFeel:saved.EffortFeel||'', Notes:saved.Notes||'', _row:week*1000+100+i });
+                result.kb.push({ Week:week, Day:'Friday', Date:saved.Date||'', Role:'ACCESSORY', SessionLabel: label+' - Fri Yin', Movement:m[0], PlannedSetsRepsKg:m[1], ActualSets:saved.ActualSets||'', ActualReps:saved.ActualReps||'', ActualKg:saved.ActualKg||'', ActualSetData:saved.ActualSetData||'[]', HRCapHeld:'', FloatCheck:saved.FloatCheck||'', FormBreak:'', EffortFeel:saved.EffortFeel||'', Notes:saved.Notes||'', Skipped:saved.Skipped||'', SkipReason:saved.SkipReason||'', _row:week*1000+100+i });
               });
               // Station
               var st = V6_STATIONS[week-1];
               var savedSt = LOCAL_DATA['station_'+week] || {};
-              result.station = { Week:week, Date:savedSt.Date||'', SessionType:st[1], Role:st[2], SkiErg:savedSt.SkiErg||'', SledPush:savedSt.SledPush||'', SledPull:savedSt.SledPull||'', BurpeeBJ:savedSt.BurpeeBJ||'', Row:savedSt.Row||'', Farmers:savedSt.Farmers||'', Sandbag:savedSt.Sandbag||'', WallBalls:savedSt.WallBalls||'', SledPullRaceLoad:savedSt.SledPullRaceLoad||'', SledPullTimes:savedSt.SledPullTimes||'[]', TemplateHR:savedSt.TemplateHR||'', EvenEffortHeld:savedSt.EvenEffortHeld||'', SessionFeel:savedSt.SessionFeel||'', Notes:savedSt.Notes||'', _row:week*10 };
-              // Done count
-              result.runs.forEach(function(r) { if (r.ActualDist || r.ActualTime) result.sessionsDone++; });
+              result.station = { Week:week, Date:savedSt.Date||'', SessionType:st[1], Role:st[2], SkiErg:savedSt.SkiErg||'', SledPush:savedSt.SledPush||'', SledPull:savedSt.SledPull||'', BurpeeBJ:savedSt.BurpeeBJ||'', Row:savedSt.Row||'', Farmers:savedSt.Farmers||'', Sandbag:savedSt.Sandbag||'', WallBalls:savedSt.WallBalls||'', SledPullRaceLoad:savedSt.SledPullRaceLoad||'', SledPullTimes:savedSt.SledPullTimes||'[]', TemplateHR:savedSt.TemplateHR||'', EvenEffortHeld:savedSt.EvenEffortHeld||'', SessionFeel:savedSt.SessionFeel||'', Notes:savedSt.Notes||'', Skipped:savedSt.Skipped||'', SkipReason:savedSt.SkipReason||'', _row:week*10 };
+              // Done count (skipped sessions excluded)
+              var _isSk = function(v) { return v === 'Yes' || v === true; };
+              result.runs.forEach(function(r) { if (!_isSk(r.Skipped) && (r.ActualDist || r.ActualTime)) result.sessionsDone++; });
               var kbDays = {};
-              result.kb.forEach(function(r) { if (r.ActualSets || r.ActualReps || r.ActualKg) kbDays[r.Day] = true; });
+              result.kb.forEach(function(r) { if (!_isSk(r.Skipped) && (r.ActualSets || r.ActualReps || r.ActualKg)) kbDays[r.Day] = true; });
               result.sessionsDone += Object.keys(kbDays).length;
-              if (result.station && (result.station.SkiErg || result.station.SledPullRaceLoad)) result.sessionsDone++;
+              if (result.station && !_isSk(result.station.Skipped) && (result.station.SkiErg || result.station.SledPullRaceLoad)) result.sessionsDone++;
               cb(result);
             },
             getProgressData: function() {
               var result = { tuePace:[], kbWeights:[], sessionsPerWeek:[], satDist:[], tguWeight:[], sledPullProgression:[] };
+              var isSk = function(v) { return v === 'Yes' || v === true; };
               for (var w = 1; w <= 13; w++) {
                 var count = 0;
                 var savedTue = LOCAL_DATA['run_'+w+'_Tuesday'] || {};
-                if (savedTue.ActualDist || savedTue.ActualTime) count++;
-                if (savedTue.ActualPace && typeof savedTue.ActualPace === 'string' && savedTue.ActualPace.indexOf(':') > 0 && savedTue.ActualPace.indexOf('[') < 0) {
+                if (!isSk(savedTue.Skipped) && (savedTue.ActualDist || savedTue.ActualTime)) count++;
+                if (!isSk(savedTue.Skipped) && savedTue.ActualPace && typeof savedTue.ActualPace === 'string' && savedTue.ActualPace.indexOf(':') > 0 && savedTue.ActualPace.indexOf('[') < 0) {
                   result.tuePace.push({ week:w, pace:savedTue.ActualPace, hr:savedTue.AvgHR });
                 }
-                if ((LOCAL_DATA['run_'+w+'_Thursday']||{}).ActualDist) count++;
+                var savedThu = LOCAL_DATA['run_'+w+'_Thursday'] || {};
+                if (!isSk(savedThu.Skipped) && savedThu.ActualDist) count++;
                 var savedSat = LOCAL_DATA['run_'+w+'_Saturday'] || {};
-                if (savedSat.ActualDist) {
+                if (!isSk(savedSat.Skipped) && savedSat.ActualDist) {
                   count++;
                   result.satDist.push({ week:w, dist:parseFloat(savedSat.ActualDist) });
                 }
@@ -364,6 +373,7 @@ if (IS_LOCAL) {
                 var maxSwing = 0, maxTGU = 0;
                 kbW.mon.forEach(function(m, i) {
                   var sv = LOCAL_DATA['kb_'+w+'_Monday_'+i] || {};
+                  if (isSk(sv.Skipped)) return;
                   if (sv.ActualSets || sv.ActualReps || sv.ActualKg) kbDays['Monday'] = true;
                   var kg = parseFloat(sv.ActualKg) || 0;
                   if (m[0].indexOf('Swing') >= 0 && kg > maxSwing) maxSwing = kg;
@@ -371,6 +381,7 @@ if (IS_LOCAL) {
                 });
                 kbW.fri.forEach(function(m, i) {
                   var sv = LOCAL_DATA['kb_'+w+'_Friday_'+i] || {};
+                  if (isSk(sv.Skipped)) return;
                   if (sv.ActualSets || sv.ActualReps || sv.ActualKg) kbDays['Friday'] = true;
                   var kg = parseFloat(sv.ActualKg) || 0;
                   if (m[0].indexOf('TGU') >= 0 && kg > maxTGU) maxTGU = kg;
@@ -379,7 +390,7 @@ if (IS_LOCAL) {
                 if (maxSwing > 0) result.kbWeights.push({ week:w, kg:maxSwing });
                 if (maxTGU > 0) result.tguWeight.push({ week:w, kg:maxTGU });
                 var savedSt = LOCAL_DATA['station_'+w] || {};
-                if (savedSt.SkiErg || savedSt.SledPullRaceLoad) count++;
+                if (!isSk(savedSt.Skipped) && (savedSt.SkiErg || savedSt.SledPullRaceLoad)) count++;
                 if (savedSt.SledPullTimes) {
                   try {
                     var arr = JSON.parse(savedSt.SledPullTimes);
@@ -584,20 +595,50 @@ function renderCards() {
     { key: 'sat', day: 'Saturday',  label: d.sessions.satLabel, role: currentWeek === 13 ? 'RACE' : 'RECOVERY' }
   ];
 
+  function isSkippedFlag(v) { return v === true || v === 'Yes' || v === 'yes' || v === 'TRUE'; }
+
   var runDays = {};
-  if (d.runs) d.runs.forEach(function(r) { if (r.ActualDist || r.ActualTime) runDays[r.Day] = true; });
+  var runSkipped = {}; // day -> reason
+  if (d.runs) d.runs.forEach(function(r) {
+    if (isSkippedFlag(r.Skipped)) { runSkipped[r.Day] = r.SkipReason || ''; }
+    else if (r.ActualDist || r.ActualTime) { runDays[r.Day] = true; }
+  });
   var kbDays = {};
-  if (d.kb) d.kb.forEach(function(r) { if (r.ActualSets || r.ActualReps || r.ActualKg) kbDays[r.Day] = true; });
-  var stDone = d.station && (d.station.SkiErg || d.station.SledPull || d.station.Row || d.station.SledPullRaceLoad);
+  var kbSkipped = {};
+  if (d.kb) d.kb.forEach(function(r) {
+    if (isSkippedFlag(r.Skipped)) { kbSkipped[r.Day] = r.SkipReason || kbSkipped[r.Day] || ''; }
+    else if (r.ActualSets || r.ActualReps || r.ActualKg) { kbDays[r.Day] = true; }
+  });
+  var stSkippedReason = '';
+  var stDone = false;
+  if (d.station) {
+    if (isSkippedFlag(d.station.Skipped)) stSkippedReason = d.station.SkipReason || '';
+    else if (d.station.SkiErg || d.station.SledPull || d.station.Row || d.station.SledPullRaceLoad) stDone = true;
+  }
 
   var html = '';
   days.forEach(function(s) {
+    var skippedReason = null;
+    if (s.key === 'wed') {
+      if (stSkippedReason !== '' || (d.station && isSkippedFlag(d.station.Skipped))) skippedReason = stSkippedReason;
+    } else if (s.key === 'mon' || s.key === 'fri') {
+      if (kbSkipped[s.day] !== undefined) skippedReason = kbSkipped[s.day];
+    } else {
+      if (runSkipped[s.day] !== undefined) skippedReason = runSkipped[s.day];
+    }
     var done = runDays[s.day] || kbDays[s.day] || (s.key === 'wed' && stDone);
+    var isSkipped = skippedReason !== null;
     var roleClass = s.role === 'HIGH COST' ? 'role-high' : s.role === 'SUPPORT' ? 'role-support' : s.role === 'RECOVERY' || s.role === 'REST' ? 'role-recovery' : s.role === 'ACCESSORY' ? 'role-accessory' : s.role === 'CALIBRATION' ? 'role-calibration' : 'role-sim';
-    html += '<div class="session-card' + (done ? ' done' : '') + '" onclick="openLog(\'' + s.key + '\')">';
+    var stateClass = isSkipped ? ' skipped' : (done ? ' done' : '');
+    html += '<div class="session-card' + stateClass + '" onclick="openLog(\'' + s.key + '\')">';
     html += '<span class="day">' + s.day + '</span><span class="role ' + roleClass + '">' + s.role + '</span>';
     html += '<div class="label">' + (s.label || '') + '</div>';
-    if (done) html += '<span class="check">\u2713</span>';
+    if (isSkipped) {
+      html += '<span class="skipped-badge">SKIPPED</span>';
+      if (skippedReason) html += '<div class="skip-reason">' + skippedReason + '</div>';
+    } else if (done) {
+      html += '<span class="check">\u2713</span>';
+    }
     html += '</div>';
   });
   document.getElementById('sessionCards').innerHTML = html;
@@ -675,6 +716,7 @@ function buildRunForm(dayKey, d) {
   h += '<div class="form-section"><h3>How did it feel?</h3>' + feelSelector('run-feel', entry.EffortFeel) + '</div>';
   h += '<div class="form-section"><div class="form-group"><label>Notes</label><textarea id="run-notes">' + (entry.Notes || '') + '</textarea></div></div>';
   h += '<button class="btn btn-primary" onclick="saveRun(' + entry._row + ',' + (repCfg ? repCfg.reps : 0) + ')">Save Run</button>';
+  h += '<button class="btn-skip" onclick="skipRun(' + entry._row + ')">Skip this session</button>';
   return h;
 }
 
@@ -746,6 +788,7 @@ function buildKBForm(dayKey, d) {
   h += '<div class="form-section"><h3>How did it feel?</h3>' + feelSelector('kb-feel', entries[0].EffortFeel) + '</div>';
   h += '<div class="form-section"><div class="form-group"><label>Notes</label><textarea id="kb-notes">' + (entries[0].Notes || '') + '</textarea></div></div>';
   h += '<button class="btn btn-primary" onclick="saveKB()">Save KB Session</button>';
+  h += '<button class="btn-skip" onclick="skipKB()">Skip this session</button>';
   return h;
 }
 
@@ -828,6 +871,7 @@ function buildStationForm(d) {
   h += '<div class="form-section"><h3>How did it feel?</h3>' + feelSelector('st-feel', entry.SessionFeel) + '</div>';
   h += '<div class="form-section"><div class="form-group"><label>Notes</label><textarea id="st-notes">' + (entry.Notes || '') + '</textarea></div></div>';
   h += '<button class="btn btn-primary" onclick="saveStation(' + (entry._row || 0) + ')">Save Station Session</button>';
+  h += '<button class="btn-skip" onclick="skipStation(' + (entry._row || 0) + ')">Skip this session</button>';
   return h;
 }
 
@@ -908,6 +952,91 @@ function wireDraftAutoSave(context) {
   });
 }
 
+// Confirm before replacing existing data with a skip. Returns reason string or null if cancelled.
+function promptSkipReason(hasData) {
+  if (hasData) {
+    if (!confirm('This session has logged data. Replace with a skip?')) return null;
+  }
+  var reason = prompt('Reason for skipping? (optional)');
+  if (reason === null) return null;
+  return reason || '';
+}
+
+function skipRun(rowNum) {
+  var hasData = !!(val('run-dist') || val('run-time') || val('run-avghr') || val('run-maxhr'));
+  var reason = promptSkipReason(hasData);
+  if (reason === null) return;
+  showLoading();
+  var data = {
+    Date: val('run-date') || today(),
+    ActualDist: '', ActualTime: '', ActualPace: '',
+    AvgHR: '', MaxHR: '', HRCapHeld: '',
+    EffortFeel: '', Notes: val('run-notes') || '',
+    Skipped: 'Yes', SkipReason: reason,
+    Week: currentWeek
+  };
+  google.script.run.withSuccessHandler(function() {
+    hideLoading(); showToast('Session marked skipped');
+    if (window._currentDraftCtx) clearDraft(window._currentDraftCtx);
+    setTimeout(function() { showScreen('week'); loadWeek(); }, 800);
+  }).withFailureHandler(function() { hideLoading(); showToast('Error saving'); }).saveRunEntry(rowNum, data);
+}
+
+function skipKB() {
+  var d = weekData;
+  var dayName = document.querySelector('#screen-log h2').textContent.indexOf('Monday') >= 0 ? 'Monday' : 'Friday';
+  var kbEntries = [];
+  if (d.kb) d.kb.forEach(function(r) { if (r.Day === dayName) kbEntries.push(r); });
+  if (kbEntries.length === 0) return;
+  var hasData = false;
+  kbEntries.forEach(function(e, i) {
+    for (var s = 0; s < 12; s++) {
+      if (val('kb-reps-' + i + '-' + s) || val('kb-kg-' + i + '-' + s) || val('kb-dist-' + i + '-' + s)) { hasData = true; return; }
+    }
+    if (val('kb-tm-' + i)) hasData = true;
+  });
+  var reason = promptSkipReason(hasData);
+  if (reason === null) return;
+  showLoading();
+  var entries = kbEntries.map(function(e) {
+    return { rowNum: e._row, data: {
+      Date: val('kb-date') || today(),
+      ActualSets: '', ActualReps: '', ActualKg: '', ActualSetData: '[]',
+      HRCapHeld: '', FloatCheck: '', FormBreak: '',
+      EffortFeel: '', Notes: val('kb-notes') || '',
+      Skipped: 'Yes', SkipReason: reason,
+      Week: currentWeek
+    }};
+  });
+  google.script.run.withSuccessHandler(function() {
+    hideLoading(); showToast('Session marked skipped');
+    if (window._currentDraftCtx) clearDraft(window._currentDraftCtx);
+    setTimeout(function() { showScreen('week'); loadWeek(); }, 800);
+  }).withFailureHandler(function() { hideLoading(); showToast('Error saving'); }).saveKBSession(entries);
+}
+
+function skipStation(rowNum) {
+  var stations = ['st-skierg','st-sledpush','st-sledpull','st-burpeebj','st-row','st-farmers','st-sandbag','st-wallballs'];
+  var hasData = stations.some(function(id) { return !!val(id); });
+  for (var r = 0; r < 4; r++) if (val('st-sled-' + r)) hasData = true;
+  var reason = promptSkipReason(hasData);
+  if (reason === null) return;
+  showLoading();
+  var data = {
+    Date: val('st-date') || today(),
+    SkiErg: '', SledPush: '', SledPull: '', BurpeeBJ: '', Row: '', Farmers: '', Sandbag: '', WallBalls: '',
+    SledPullRaceLoad: '', SledPullTimes: '[]', TemplateHR: '', EvenEffortHeld: '',
+    SessionFeel: '', Notes: val('st-notes') || '',
+    Skipped: 'Yes', SkipReason: reason,
+    Week: currentWeek
+  };
+  google.script.run.withSuccessHandler(function() {
+    hideLoading(); showToast('Session marked skipped');
+    if (window._currentDraftCtx) clearDraft(window._currentDraftCtx);
+    setTimeout(function() { showScreen('week'); loadWeek(); }, 800);
+  }).withFailureHandler(function() { hideLoading(); showToast('Error saving'); }).saveStationEntry(rowNum, data);
+}
+
 function saveRun(rowNum, repCount) {
   showLoading();
   var reps = [];
@@ -924,6 +1053,7 @@ function saveRun(rowNum, repCount) {
     HRCapHeld: val('run-hrcap'),
     EffortFeel: val('run-feel'),
     Notes: val('run-notes'),
+    Skipped: '', SkipReason: '',
     Week: currentWeek
   };
   // If no reps but dist/time given, compute pace
@@ -989,6 +1119,7 @@ function saveKB() {
       FormBreak: '',
       EffortFeel: val('kb-feel'),
       Notes: val('kb-notes'),
+      Skipped: '', SkipReason: '',
       Week: currentWeek
     };
     entries.push({ rowNum: e._row, data: data });
@@ -1026,6 +1157,7 @@ function saveStation(rowNum) {
     EvenEffortHeld: val('st-even-effort') || '',
     SessionFeel: val('st-feel'),
     Notes: val('st-notes'),
+    Skipped: '', SkipReason: '',
     Week: currentWeek
   };
   google.script.run.withSuccessHandler(function() {

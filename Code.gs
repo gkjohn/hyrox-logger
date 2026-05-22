@@ -1,10 +1,10 @@
-// HYROX 13-Week V6.1 Training Logger | App v6.1.5 \u2014 Google Apps Script Backend
+// HYROX 13-Week V6.1 Training Logger | App v6.1.6 \u2014 Google Apps Script Backend
 // Race: July 26, 2026 \u2014 Target: Sub 2:00:00
 // Paste into Extensions -> Apps Script in your Google Sheet
 
 function doGet() {
   return HtmlService.createHtmlOutputFromFile('Index')
-    .setTitle("Gautam's HYROX Logger [v6.1.5]")
+    .setTitle("Gautam's HYROX Logger [v6.1.6]")
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
     .addMetaTag('viewport', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no');
 }
@@ -39,8 +39,8 @@ function setupSheets() {
   // RunLog
   var run = getOrCreateSheet(ss, 'RunLog');
   if (run.getLastRow() < 2) {
-    run.getRange(1, 1, 1, 16).setValues([['Week','Day','Date','SessionType','Role','PlannedDist','TargetPace','HRCap','ActualDist','ActualTime','ActualPace','AvgHR','MaxHR','HRCapHeld','EffortFeel','Notes']]);
-    run.getRange(1, 1, 1, 16).setFontWeight('bold');
+    run.getRange(1, 1, 1, 18).setValues([['Week','Day','Date','SessionType','Role','PlannedDist','TargetPace','HRCap','ActualDist','ActualTime','ActualPace','AvgHR','MaxHR','HRCapHeld','EffortFeel','Notes','Skipped','SkipReason']]);
+    run.getRange(1, 1, 1, 18).setFontWeight('bold');
     var runData = buildRunLogData();
     if (runData.length > 0) {
       run.getRange(2, 1, runData.length, runData[0].length).setValues(runData);
@@ -52,8 +52,8 @@ function setupSheets() {
   // KBLog
   var kb = getOrCreateSheet(ss, 'KBLog');
   if (kb.getLastRow() < 2) {
-    kb.getRange(1, 1, 1, 16).setValues([['Week','Day','Date','Role','SessionLabel','Movement','PlannedSetsRepsKg','ActualSets','ActualReps','ActualKg','ActualSetData','HRCapHeld','FloatCheck','FormBreak','EffortFeel','Notes']]);
-    kb.getRange(1, 1, 1, 16).setFontWeight('bold');
+    kb.getRange(1, 1, 1, 18).setValues([['Week','Day','Date','Role','SessionLabel','Movement','PlannedSetsRepsKg','ActualSets','ActualReps','ActualKg','ActualSetData','HRCapHeld','FloatCheck','FormBreak','EffortFeel','Notes','Skipped','SkipReason']]);
+    kb.getRange(1, 1, 1, 18).setFontWeight('bold');
     var kbData = buildKBLogData();
     if (kbData.length > 0) kb.getRange(2, 1, kbData.length, kbData[0].length).setValues(kbData);
   }
@@ -61,8 +61,8 @@ function setupSheets() {
   // StationLog
   var station = getOrCreateSheet(ss, 'StationLog');
   if (station.getLastRow() < 2) {
-    station.getRange(1, 1, 1, 18).setValues([['Week','Date','SessionType','Role','SkiErg','SledPush','SledPull','BurpeeBJ','Row','Farmers','Sandbag','WallBalls','SledPullRaceLoad','SledPullTimes','TemplateHR','EvenEffortHeld','SessionFeel','Notes']]);
-    station.getRange(1, 1, 1, 18).setFontWeight('bold');
+    station.getRange(1, 1, 1, 20).setValues([['Week','Date','SessionType','Role','SkiErg','SledPush','SledPull','BurpeeBJ','Row','Farmers','Sandbag','WallBalls','SledPullRaceLoad','SledPullTimes','TemplateHR','EvenEffortHeld','SessionFeel','Notes','Skipped','SkipReason']]);
+    station.getRange(1, 1, 1, 20).setFontWeight('bold');
     var stationData = buildStationLogData();
     if (stationData.length > 0) station.getRange(2, 1, stationData.length, stationData[0].length).setValues(stationData);
   }
@@ -89,6 +89,30 @@ function getOrCreateSheet(ss, name) {
   var sheet = ss.getSheetByName(name);
   if (!sheet) sheet = ss.insertSheet(name);
   return sheet;
+}
+
+// One-time migration: adds Skipped + SkipReason columns to RunLog/KBLog/StationLog.
+// Safe to run multiple times — no-op if columns already present.
+function migrateAddSkipColumns() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheets = ['RunLog', 'KBLog', 'StationLog'];
+  var added = [];
+  sheets.forEach(function(name) {
+    var sheet = ss.getSheetByName(name);
+    if (!sheet) return;
+    var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    var nextCol = sheet.getLastColumn() + 1;
+    if (headers.indexOf('Skipped') === -1) {
+      sheet.getRange(1, nextCol).setValue('Skipped').setFontWeight('bold');
+      nextCol++;
+      added.push(name + '.Skipped');
+    }
+    if (headers.indexOf('SkipReason') === -1) {
+      sheet.getRange(1, nextCol).setValue('SkipReason').setFontWeight('bold');
+      added.push(name + '.SkipReason');
+    }
+  });
+  return added.length ? 'Added: ' + added.join(', ') : 'No changes -- columns already exist';
 }
 
 // --- Data Builders -------------------------------------------------------------
@@ -131,10 +155,10 @@ function buildRunLogData() {
   var rows = [];
   for (var w = 1; w <= 13; w++) {
     var t = tueData[w];
-    rows.push([w,'Tuesday','',t[0],t[1],t[2],t[3],t[4],'','','','','','','','']);
-    rows.push([w,'Thursday','','Easy Run','RECOVERY',thuDist[w],'',150,'','','','','','','','']);
+    rows.push([w,'Tuesday','',t[0],t[1],t[2],t[3],t[4],'','','','','','','','','','']);
+    rows.push([w,'Thursday','','Easy Run','RECOVERY',thuDist[w],'',150,'','','','','','','','','','']);
     var s = satDist[w];
-    rows.push([w,'Saturday','',s[0],'RECOVERY',s[1],'',s[2],'','','','','','','','']);
+    rows.push([w,'Saturday','',s[0],'RECOVERY',s[1],'',s[2],'','','','','','','','','','']);
   }
   return rows;
 }
@@ -181,10 +205,10 @@ function buildKBLogData() {
     var wk = weeks[w];
     var label = labelMap[w];
     wk.mon.forEach(function(m) {
-      rows.push([w, 'Monday', '', 'SUPPORT', label + ' - Mon KB', m[0], m[1], '', '', '', '', '', '', '', '', '']);
+      rows.push([w, 'Monday', '', 'SUPPORT', label + ' - Mon KB', m[0], m[1], '', '', '', '', '', '', '', '', '', '', '']);
     });
     wk.fri.forEach(function(m) {
-      rows.push([w, 'Friday', '', 'ACCESSORY', label + ' - Fri Yin', m[0], m[1], '', '', '', '', '', '', '', '', '']);
+      rows.push([w, 'Friday', '', 'ACCESSORY', label + ' - Fri Yin', m[0], m[1], '', '', '', '', '', '', '', '', '', '', '']);
     });
   }
   return rows;
@@ -209,7 +233,7 @@ function buildStationLogData() {
   ];
   var rows = [];
   types.forEach(function(t) {
-    rows.push([t[0],'',t[1],t[2],'','','','','','','','','','','','','','']);
+    rows.push([t[0],'',t[1],t[2],'','','','','','','','','','','','','','','','']);
   });
   return rows;
 }
@@ -373,20 +397,41 @@ function updateSessionCount(week) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var count = 0;
 
+  // Helper: look up column index by header name (returns -1 if missing)
+  function colIdx(headers, name) { return headers.indexOf(name); }
+  function isSkipped(row, skippedIdx) {
+    if (skippedIdx < 0) return false;
+    var v = row[skippedIdx];
+    return v === true || v === 'Yes' || v === 'yes' || v === 'TRUE';
+  }
+
   var run = ss.getSheetByName('RunLog');
   if (run) {
     var runData = run.getDataRange().getValues();
+    var rHeaders = runData[0] || [];
+    var rSkippedIdx = colIdx(rHeaders, 'Skipped');
+    var rActualDistIdx = colIdx(rHeaders, 'ActualDist');
+    var rActualTimeIdx = colIdx(rHeaders, 'ActualTime');
     for (var i = 1; i < runData.length; i++) {
-      if (runData[i][0] == week && (runData[i][8] || runData[i][9])) count++;
+      if (runData[i][0] != week) continue;
+      if (isSkipped(runData[i], rSkippedIdx)) continue;
+      if (runData[i][rActualDistIdx] || runData[i][rActualTimeIdx]) count++;
     }
   }
 
   var kb = ss.getSheetByName('KBLog');
   if (kb) {
     var kbData = kb.getDataRange().getValues();
+    var kHeaders = kbData[0] || [];
+    var kSkippedIdx = colIdx(kHeaders, 'Skipped');
+    var kSetsIdx = colIdx(kHeaders, 'ActualSets');
+    var kRepsIdx = colIdx(kHeaders, 'ActualReps');
+    var kKgIdx = colIdx(kHeaders, 'ActualKg');
     var kbDays = {};
     for (var i = 1; i < kbData.length; i++) {
-      if (kbData[i][0] == week && (kbData[i][7] || kbData[i][8] || kbData[i][9])) {
+      if (kbData[i][0] != week) continue;
+      if (isSkipped(kbData[i], kSkippedIdx)) continue;
+      if (kbData[i][kSetsIdx] || kbData[i][kRepsIdx] || kbData[i][kKgIdx]) {
         kbDays[kbData[i][1]] = true;
       }
     }
@@ -396,8 +441,15 @@ function updateSessionCount(week) {
   var station = ss.getSheetByName('StationLog');
   if (station) {
     var stData = station.getDataRange().getValues();
+    var sHeaders = stData[0] || [];
+    var sSkippedIdx = colIdx(sHeaders, 'Skipped');
+    var sSkiErgIdx = colIdx(sHeaders, 'SkiErg');
+    var sSledPullIdx = colIdx(sHeaders, 'SledPull');
+    var sSledPullRaceIdx = colIdx(sHeaders, 'SledPullRaceLoad');
     for (var i = 1; i < stData.length; i++) {
-      if (stData[i][0] == week && (stData[i][4] || stData[i][6] || stData[i][12])) count++;
+      if (stData[i][0] != week) continue;
+      if (isSkipped(stData[i], sSkippedIdx)) continue;
+      if (stData[i][sSkiErgIdx] || stData[i][sSledPullIdx] || stData[i][sSledPullRaceIdx]) count++;
     }
   }
 
@@ -487,11 +539,15 @@ function getProgressData() {
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var result = { tuePace: [], kbWeights: [], sessionsPerWeek: [], satDist: [], tguWeight: [], sledPullProgression: [] };
+    var isSk = function(v) { return v === true || v === 'Yes' || v === 'yes' || v === 'TRUE'; };
 
     var run = ss.getSheetByName('RunLog');
     if (run) {
       var runData = run.getDataRange().getValues();
+      var rHeaders = runData[0] || [];
+      var rSkippedIdx = rHeaders.indexOf('Skipped');
       for (var i = 1; i < runData.length; i++) {
+        if (rSkippedIdx >= 0 && isSk(runData[i][rSkippedIdx])) continue;
         if (runData[i][1] === 'Tuesday' && runData[i][10]) {
           result.tuePace.push({ week: runData[i][0], pace: String(runData[i][10]), hr: runData[i][11] });
         }
@@ -504,9 +560,12 @@ function getProgressData() {
     var kb = ss.getSheetByName('KBLog');
     if (kb) {
       var kbData = kb.getDataRange().getValues();
+      var kHeaders = kbData[0] || [];
+      var kSkippedIdx = kHeaders.indexOf('Skipped');
       var swingByWeek = {};
       var tguByWeek = {};
       for (var i = 1; i < kbData.length; i++) {
+        if (kSkippedIdx >= 0 && isSk(kbData[i][kSkippedIdx])) continue;
         var w = kbData[i][0];
         var movement = String(kbData[i][5] || '');
         var actualKg = parseFloat(kbData[i][9]);
@@ -538,7 +597,10 @@ function getProgressData() {
     var station = ss.getSheetByName('StationLog');
     if (station) {
       var stData = station.getDataRange().getValues();
+      var sHeaders = stData[0] || [];
+      var sSkippedIdx = sHeaders.indexOf('Skipped');
       for (var i = 1; i < stData.length; i++) {
+        if (sSkippedIdx >= 0 && isSk(stData[i][sSkippedIdx])) continue;
         var times = stData[i][13]; // SledPullTimes JSON
         if (times) {
           try {
