@@ -92,7 +92,7 @@ function getOrCreateSheet(ss, name) {
 }
 
 // One-time migration: adds Skipped + SkipReason columns to RunLog/KBLog/StationLog.
-// Safe to run multiple times — no-op if columns already present.
+// Safe to run multiple times -- no-op if columns already present.
 function migrateAddSkipColumns() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sheets = ['RunLog', 'KBLog', 'StationLog'];
@@ -111,6 +111,33 @@ function migrateAddSkipColumns() {
       sheet.getRange(1, nextCol).setValue('SkipReason').setFontWeight('bold');
       added.push(name + '.SkipReason');
     }
+  });
+  return added.length ? 'Added: ' + added.join(', ') : 'No changes -- columns already exist';
+}
+
+// One-time migration: adds Coach override columns to RunLog/KBLog/StationLog.
+// Schema-only -- writing into these columns has no effect on app display until
+// v6.1.7 ships the doPost write endpoint and the override-rendering UI.
+// Safe to run multiple times -- no-op if columns already present.
+function migrateAddOverrideColumns() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var plan = {
+    RunLog:     ['PlannedDistOverride', 'TargetPaceOverride', 'HRCapOverride', 'OverrideBy', 'OverrideDate', 'OverrideReason'],
+    KBLog:      ['MovementOverride', 'PlannedSetsRepsKgOverride', 'OverrideBy', 'OverrideDate', 'OverrideReason'],
+    StationLog: ['SessionTypeOverride', 'StationsOverride', 'OverrideBy', 'OverrideDate', 'OverrideReason']
+  };
+  var added = [];
+  Object.keys(plan).forEach(function(name) {
+    var sheet = ss.getSheetByName(name);
+    if (!sheet) return;
+    var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    var nextCol = sheet.getLastColumn() + 1;
+    plan[name].forEach(function(col) {
+      if (headers.indexOf(col) !== -1) return;
+      sheet.getRange(1, nextCol).setValue(col).setFontWeight('bold');
+      added.push(name + '.' + col);
+      nextCol++;
+    });
   });
   return added.length ? 'Added: ' + added.join(', ') : 'No changes -- columns already exist';
 }
