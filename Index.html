@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>Gautam's HYROX Logger [v6.1.6]</title>
+  <title>Gautam's HYROX Logger [v6.1.7a]</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
   <style>
     :root {
@@ -40,6 +40,16 @@
     .session-card.skipped .skipped-badge { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); font-size: 10px; font-weight: 700; letter-spacing: 0.5px; color: #ff9800; background: rgba(255,152,0,0.15); padding: 4px 8px; border-radius: 10px; }
     .session-card.skipped .skip-reason { font-size: 11px; color: var(--text2); margin-top: 4px; font-style: italic; }
     .btn-skip { display: block; width: 100%; padding: 12px; border-radius: 12px; border: 1px solid #ff9800; background: transparent; color: #ff9800; font-size: 14px; font-weight: 500; cursor: pointer; margin-top: 8px; }
+    /* Coach overrides */
+    .session-card.has-override { border-left-color: var(--yellow); background: rgba(255,193,7,0.04); }
+    .session-card .coach-badge { position: absolute; right: 16px; top: 12px; font-size: 9px; font-weight: 700; letter-spacing: 0.5px; color: var(--yellow); background: rgba(255,193,7,0.15); padding: 4px 8px; border-radius: 10px; text-transform: uppercase; }
+    .session-card .coach-card-reason { font-size: 11px; color: var(--text2); margin-top: 4px; font-style: italic; padding-right: 100px; }
+    .coach-banner { background: linear-gradient(135deg, rgba(255,193,7,0.15), rgba(255,152,0,0.1)); border: 1px solid rgba(255,193,7,0.4); border-left-width: 4px; border-radius: 8px; padding: 12px 14px; margin-bottom: 12px; }
+    .coach-banner .ch-title { font-size: 11px; font-weight: 700; color: var(--yellow); letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 6px; }
+    .coach-banner .ch-reason { font-size: 13px; color: var(--text); line-height: 1.5; }
+    .original-strike { font-size: 11px; color: var(--text2); text-decoration: line-through; margin-top: 4px; }
+    .override-value { color: var(--yellow); font-weight: 600; }
+    .coach-inline { font-size: 10px; font-weight: 700; color: var(--yellow); background: rgba(255,193,7,0.15); padding: 2px 6px; border-radius: 6px; margin-left: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
     .btn-skip:active { background: rgba(255,152,0,0.1); }
     .session-card .day { font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--text2); letter-spacing: 0.5px; }
     .session-card .role { font-size: 10px; padding: 2px 8px; border-radius: 10px; display: inline-block; margin-left: 8px; }
@@ -125,7 +135,7 @@
 <div class="screen active" id="screen-week">
   <div class="header">
     <h1>Gautam's HYROX Logger</h1>
-    <p>v6.1.6 &middot; Race: Jul 26 &middot; Sub 2:00:00</p>
+    <p>v6.1.7a &middot; Race: Jul 26 &middot; Sub 2:00:00</p>
   </div>
   <div id="hrvBanner"></div>
   <div class="week-sel">
@@ -320,28 +330,28 @@ if (IS_LOCAL) {
               // Runs
               var t = V6_TUE[week];
               var savedTue = LOCAL_DATA['run_'+week+'_Tuesday'] || {};
-              result.runs.push({ Week:week, Day:'Tuesday', Date:savedTue.Date||'', SessionType:t[0], Role:t[1], PlannedDist:t[2], TargetPace:t[3], HRCap:t[4], ActualDist:savedTue.ActualDist||'', ActualTime:savedTue.ActualTime||'', ActualPace:savedTue.ActualPace||'', AvgHR:savedTue.AvgHR||'', MaxHR:savedTue.MaxHR||'', HRCapHeld:savedTue.HRCapHeld||'', EffortFeel:savedTue.EffortFeel||'', Notes:savedTue.Notes||'', Skipped:savedTue.Skipped||'', SkipReason:savedTue.SkipReason||'', _row:week*100+1 });
+              result.runs.push({ Week:week, Day:'Tuesday', Date:savedTue.Date||'', SessionType:t[0], Role:t[1], PlannedDist:t[2], TargetPace:t[3], HRCap:t[4], ActualDist:savedTue.ActualDist||'', ActualTime:savedTue.ActualTime||'', ActualPace:savedTue.ActualPace||'', AvgHR:savedTue.AvgHR||'', MaxHR:savedTue.MaxHR||'', HRCapHeld:savedTue.HRCapHeld||'', EffortFeel:savedTue.EffortFeel||'', Notes:savedTue.Notes||'', Skipped:savedTue.Skipped||'', SkipReason:savedTue.SkipReason||'', PlannedDistOverride:savedTue.PlannedDistOverride||'', TargetPaceOverride:savedTue.TargetPaceOverride||'', HRCapOverride:savedTue.HRCapOverride||'', OverrideBy:savedTue.OverrideBy||'', OverrideDate:savedTue.OverrideDate||'', OverrideReason:savedTue.OverrideReason||'', _row:week*100+1 });
               var savedThu = LOCAL_DATA['run_'+week+'_Thursday'] || {};
-              result.runs.push({ Week:week, Day:'Thursday', Date:savedThu.Date||'', SessionType:'Easy Run', Role:'RECOVERY', PlannedDist:V6_THU[week], TargetPace:'', HRCap:150, ActualDist:savedThu.ActualDist||'', ActualTime:savedThu.ActualTime||'', ActualPace:savedThu.ActualPace||'', AvgHR:savedThu.AvgHR||'', MaxHR:savedThu.MaxHR||'', HRCapHeld:savedThu.HRCapHeld||'', EffortFeel:savedThu.EffortFeel||'', Notes:savedThu.Notes||'', Skipped:savedThu.Skipped||'', SkipReason:savedThu.SkipReason||'', _row:week*100+2 });
+              result.runs.push({ Week:week, Day:'Thursday', Date:savedThu.Date||'', SessionType:'Easy Run', Role:'RECOVERY', PlannedDist:V6_THU[week], TargetPace:'', HRCap:150, ActualDist:savedThu.ActualDist||'', ActualTime:savedThu.ActualTime||'', ActualPace:savedThu.ActualPace||'', AvgHR:savedThu.AvgHR||'', MaxHR:savedThu.MaxHR||'', HRCapHeld:savedThu.HRCapHeld||'', EffortFeel:savedThu.EffortFeel||'', Notes:savedThu.Notes||'', Skipped:savedThu.Skipped||'', SkipReason:savedThu.SkipReason||'', PlannedDistOverride:savedThu.PlannedDistOverride||'', TargetPaceOverride:savedThu.TargetPaceOverride||'', HRCapOverride:savedThu.HRCapOverride||'', OverrideBy:savedThu.OverrideBy||'', OverrideDate:savedThu.OverrideDate||'', OverrideReason:savedThu.OverrideReason||'', _row:week*100+2 });
               var s = V6_SAT[week];
               var savedSat = LOCAL_DATA['run_'+week+'_Saturday'] || {};
-              result.runs.push({ Week:week, Day:'Saturday', Date:savedSat.Date||'', SessionType:s[0], Role:'RECOVERY', PlannedDist:s[1], TargetPace:'', HRCap:s[2], ActualDist:savedSat.ActualDist||'', ActualTime:savedSat.ActualTime||'', ActualPace:savedSat.ActualPace||'', AvgHR:savedSat.AvgHR||'', MaxHR:savedSat.MaxHR||'', HRCapHeld:savedSat.HRCapHeld||'', EffortFeel:savedSat.EffortFeel||'', Notes:savedSat.Notes||'', Skipped:savedSat.Skipped||'', SkipReason:savedSat.SkipReason||'', _row:week*100+3 });
+              result.runs.push({ Week:week, Day:'Saturday', Date:savedSat.Date||'', SessionType:s[0], Role:'RECOVERY', PlannedDist:s[1], TargetPace:'', HRCap:s[2], ActualDist:savedSat.ActualDist||'', ActualTime:savedSat.ActualTime||'', ActualPace:savedSat.ActualPace||'', AvgHR:savedSat.AvgHR||'', MaxHR:savedSat.MaxHR||'', HRCapHeld:savedSat.HRCapHeld||'', EffortFeel:savedSat.EffortFeel||'', Notes:savedSat.Notes||'', Skipped:savedSat.Skipped||'', SkipReason:savedSat.SkipReason||'', PlannedDistOverride:savedSat.PlannedDistOverride||'', TargetPaceOverride:savedSat.TargetPaceOverride||'', HRCapOverride:savedSat.HRCapOverride||'', OverrideBy:savedSat.OverrideBy||'', OverrideDate:savedSat.OverrideDate||'', OverrideReason:savedSat.OverrideReason||'', _row:week*100+3 });
               // KB
               var kbW = V6_KB[week] || { mon:[], fri:[] };
               var labelMap = { 1:'Foundation',2:'Foundation',3:'Pace Calibration',4:'Swing Ownership',5:'Swing Ownership',6:'1H Swing + Specificity',7:'1H Swing + Specificity',8:'Phase 4 - Race Pattern',9:'Phase 4 - Race Pattern',10:'Phase 4 - Reduced',11:'Last Hard Week',12:'Pre-Taper',13:'Race Week' };
               var label = labelMap[week];
               kbW.mon.forEach(function(m, i) {
                 var saved = LOCAL_DATA['kb_'+week+'_Monday_'+i] || {};
-                result.kb.push({ Week:week, Day:'Monday', Date:saved.Date||'', Role:'SUPPORT', SessionLabel: label+' - Mon KB', Movement:m[0], PlannedSetsRepsKg:m[1], ActualSets:saved.ActualSets||'', ActualReps:saved.ActualReps||'', ActualKg:saved.ActualKg||'', ActualSetData:saved.ActualSetData||'[]', HRCapHeld:saved.HRCapHeld||'', FloatCheck:saved.FloatCheck||'', FormBreak:'', EffortFeel:saved.EffortFeel||'', Notes:saved.Notes||'', Skipped:saved.Skipped||'', SkipReason:saved.SkipReason||'', _row:week*1000+i });
+                result.kb.push({ Week:week, Day:'Monday', Date:saved.Date||'', Role:'SUPPORT', SessionLabel: label+' - Mon KB', Movement:m[0], PlannedSetsRepsKg:m[1], ActualSets:saved.ActualSets||'', ActualReps:saved.ActualReps||'', ActualKg:saved.ActualKg||'', ActualSetData:saved.ActualSetData||'[]', HRCapHeld:saved.HRCapHeld||'', FloatCheck:saved.FloatCheck||'', FormBreak:'', EffortFeel:saved.EffortFeel||'', Notes:saved.Notes||'', Skipped:saved.Skipped||'', SkipReason:saved.SkipReason||'', MovementOverride:saved.MovementOverride||'', PlannedSetsRepsKgOverride:saved.PlannedSetsRepsKgOverride||'', OverrideBy:saved.OverrideBy||'', OverrideDate:saved.OverrideDate||'', OverrideReason:saved.OverrideReason||'', _row:week*1000+i });
               });
               kbW.fri.forEach(function(m, i) {
                 var saved = LOCAL_DATA['kb_'+week+'_Friday_'+i] || {};
-                result.kb.push({ Week:week, Day:'Friday', Date:saved.Date||'', Role:'ACCESSORY', SessionLabel: label+' - Fri Yin', Movement:m[0], PlannedSetsRepsKg:m[1], ActualSets:saved.ActualSets||'', ActualReps:saved.ActualReps||'', ActualKg:saved.ActualKg||'', ActualSetData:saved.ActualSetData||'[]', HRCapHeld:'', FloatCheck:saved.FloatCheck||'', FormBreak:'', EffortFeel:saved.EffortFeel||'', Notes:saved.Notes||'', Skipped:saved.Skipped||'', SkipReason:saved.SkipReason||'', _row:week*1000+100+i });
+                result.kb.push({ Week:week, Day:'Friday', Date:saved.Date||'', Role:'ACCESSORY', SessionLabel: label+' - Fri Yin', Movement:m[0], PlannedSetsRepsKg:m[1], ActualSets:saved.ActualSets||'', ActualReps:saved.ActualReps||'', ActualKg:saved.ActualKg||'', ActualSetData:saved.ActualSetData||'[]', HRCapHeld:'', FloatCheck:saved.FloatCheck||'', FormBreak:'', EffortFeel:saved.EffortFeel||'', Notes:saved.Notes||'', Skipped:saved.Skipped||'', SkipReason:saved.SkipReason||'', MovementOverride:saved.MovementOverride||'', PlannedSetsRepsKgOverride:saved.PlannedSetsRepsKgOverride||'', OverrideBy:saved.OverrideBy||'', OverrideDate:saved.OverrideDate||'', OverrideReason:saved.OverrideReason||'', _row:week*1000+100+i });
               });
               // Station
               var st = V6_STATIONS[week-1];
               var savedSt = LOCAL_DATA['station_'+week] || {};
-              result.station = { Week:week, Date:savedSt.Date||'', SessionType:st[1], Role:st[2], SkiErg:savedSt.SkiErg||'', SledPush:savedSt.SledPush||'', SledPull:savedSt.SledPull||'', BurpeeBJ:savedSt.BurpeeBJ||'', Row:savedSt.Row||'', Farmers:savedSt.Farmers||'', Sandbag:savedSt.Sandbag||'', WallBalls:savedSt.WallBalls||'', SledPullRaceLoad:savedSt.SledPullRaceLoad||'', SledPullTimes:savedSt.SledPullTimes||'[]', TemplateHR:savedSt.TemplateHR||'', EvenEffortHeld:savedSt.EvenEffortHeld||'', SessionFeel:savedSt.SessionFeel||'', Notes:savedSt.Notes||'', Skipped:savedSt.Skipped||'', SkipReason:savedSt.SkipReason||'', _row:week*10 };
+              result.station = { Week:week, Date:savedSt.Date||'', SessionType:st[1], Role:st[2], SkiErg:savedSt.SkiErg||'', SledPush:savedSt.SledPush||'', SledPull:savedSt.SledPull||'', BurpeeBJ:savedSt.BurpeeBJ||'', Row:savedSt.Row||'', Farmers:savedSt.Farmers||'', Sandbag:savedSt.Sandbag||'', WallBalls:savedSt.WallBalls||'', SledPullRaceLoad:savedSt.SledPullRaceLoad||'', SledPullTimes:savedSt.SledPullTimes||'[]', TemplateHR:savedSt.TemplateHR||'', EvenEffortHeld:savedSt.EvenEffortHeld||'', SessionFeel:savedSt.SessionFeel||'', Notes:savedSt.Notes||'', Skipped:savedSt.Skipped||'', SkipReason:savedSt.SkipReason||'', SessionTypeOverride:savedSt.SessionTypeOverride||'', StationsOverride:savedSt.StationsOverride||'', OverrideBy:savedSt.OverrideBy||'', OverrideDate:savedSt.OverrideDate||'', OverrideReason:savedSt.OverrideReason||'', _row:week*10 };
               // Done count (skipped sessions excluded)
               var _isSk = function(v) { return v === 'Yes' || v === true; };
               result.runs.forEach(function(r) { if (!_isSk(r.Skipped) && (r.ActualDist || r.ActualTime)) result.sessionsDone++; });
@@ -596,46 +606,72 @@ function renderCards() {
   ];
 
   function isSkippedFlag(v) { return v === true || v === 'Yes' || v === 'yes' || v === 'TRUE'; }
+  function rowHasOverride(r, fields) {
+    for (var i = 0; i < fields.length; i++) if (_hasOverride(r[fields[i]])) return true;
+    return false;
+  }
 
   var runDays = {};
   var runSkipped = {}; // day -> reason
+  var runOverride = {}; // day -> {date, reason, label}
   if (d.runs) d.runs.forEach(function(r) {
     if (isSkippedFlag(r.Skipped)) { runSkipped[r.Day] = r.SkipReason || ''; }
     else if (r.ActualDist || r.ActualTime) { runDays[r.Day] = true; }
+    if (rowHasOverride(r, ['PlannedDistOverride','TargetPaceOverride','HRCapOverride'])) {
+      runOverride[r.Day] = { date: String(r.OverrideDate || ''), reason: String(r.OverrideReason || '') };
+    }
   });
   var kbDays = {};
   var kbSkipped = {};
+  var kbOverride = {};
   if (d.kb) d.kb.forEach(function(r) {
     if (isSkippedFlag(r.Skipped)) { kbSkipped[r.Day] = r.SkipReason || kbSkipped[r.Day] || ''; }
     else if (r.ActualSets || r.ActualReps || r.ActualKg) { kbDays[r.Day] = true; }
+    if (rowHasOverride(r, ['MovementOverride','PlannedSetsRepsKgOverride'])) {
+      if (!kbOverride[r.Day]) kbOverride[r.Day] = { date: String(r.OverrideDate || ''), reason: String(r.OverrideReason || '') };
+    }
   });
   var stSkippedReason = '';
   var stDone = false;
+  var stOverride = null;
   if (d.station) {
     if (isSkippedFlag(d.station.Skipped)) stSkippedReason = d.station.SkipReason || '';
     else if (d.station.SkiErg || d.station.SledPull || d.station.Row || d.station.SledPullRaceLoad) stDone = true;
+    if (rowHasOverride(d.station, ['SessionTypeOverride','StationsOverride'])) {
+      stOverride = { date: String(d.station.OverrideDate || ''), reason: String(d.station.OverrideReason || '') };
+    }
   }
 
   var html = '';
   days.forEach(function(s) {
     var skippedReason = null;
+    var override = null;
     if (s.key === 'wed') {
       if (stSkippedReason !== '' || (d.station && isSkippedFlag(d.station.Skipped))) skippedReason = stSkippedReason;
+      override = stOverride;
     } else if (s.key === 'mon' || s.key === 'fri') {
       if (kbSkipped[s.day] !== undefined) skippedReason = kbSkipped[s.day];
+      override = kbOverride[s.day] || null;
     } else {
       if (runSkipped[s.day] !== undefined) skippedReason = runSkipped[s.day];
+      override = runOverride[s.day] || null;
     }
     var done = runDays[s.day] || kbDays[s.day] || (s.key === 'wed' && stDone);
     var isSkipped = skippedReason !== null;
+    var hasOverride = override !== null && !isSkipped;
     var roleClass = s.role === 'HIGH COST' ? 'role-high' : s.role === 'SUPPORT' ? 'role-support' : s.role === 'RECOVERY' || s.role === 'REST' ? 'role-recovery' : s.role === 'ACCESSORY' ? 'role-accessory' : s.role === 'CALIBRATION' ? 'role-calibration' : 'role-sim';
     var stateClass = isSkipped ? ' skipped' : (done ? ' done' : '');
+    if (hasOverride) stateClass += ' has-override';
     html += '<div class="session-card' + stateClass + '" onclick="openLog(\'' + s.key + '\')">';
     html += '<span class="day">' + s.day + '</span><span class="role ' + roleClass + '">' + s.role + '</span>';
     html += '<div class="label">' + (s.label || '') + '</div>';
     if (isSkipped) {
       html += '<span class="skipped-badge">SKIPPED</span>';
       if (skippedReason) html += '<div class="skip-reason">' + skippedReason + '</div>';
+    } else if (hasOverride) {
+      var badgeText = '\ud83d\udccb Coach' + (override.date ? ' \u00b7 ' + override.date : '');
+      html += '<span class="coach-badge">' + badgeText + '</span>';
+      if (override.reason) html += '<div class="coach-card-reason">' + override.reason + '</div>';
     } else if (done) {
       html += '<span class="check">\u2713</span>';
     }
@@ -677,10 +713,26 @@ function buildRunForm(dayKey, d) {
   var h = '<h2 style="font-size:16px;margin-bottom:4px">' + dayName + ' &middot; ' + sessionType + '</h2>';
   h += '<p style="font-size:12px;color:var(--text2);margin-bottom:16px">' + (entry.Role || '') + '</p>';
 
-  var plannedText = entry.PlannedDist || '';
-  if (entry.TargetPace) plannedText += ' &middot; ' + entry.TargetPace;
-  if (entry.HRCap) plannedText += ' &middot; HR cap ' + entry.HRCap;
-  h += '<div class="planned">Planned: ' + plannedText + '</div>';
+  // Coach overrides
+  var runOv = getOverride(entry, [
+    ['PlannedDist', 'PlannedDistOverride'],
+    ['TargetPace', 'TargetPaceOverride'],
+    ['HRCap', 'HRCapOverride']
+  ]);
+  h += coachBannerHTML(runOv);
+
+  function fmtPlanned(dist, pace, hrc) {
+    var s = String(dist || '');
+    if (pace) s += ' &middot; ' + pace;
+    if (hrc) s += ' &middot; HR cap ' + hrc;
+    return s;
+  }
+  var effPlanned = fmtPlanned(runOv.PlannedDist.value, runOv.TargetPace.value, runOv.HRCap.value);
+  h += '<div class="planned">Planned: ' + (runOv._hasAnyOverride ? '<span class="override-value">' + effPlanned + '</span>' : effPlanned) + '</div>';
+  if (runOv._hasAnyOverride) {
+    var origPlanned = fmtPlanned(runOv.PlannedDist.original, runOv.TargetPace.original, runOv.HRCap.original);
+    h += '<div class="original-strike">Was: ' + origPlanned + '</div>';
+  }
 
   // Per-rep logging if Tuesday session has reps
   var repCfg = (dayName === 'Tuesday') ? TUE_REP_CONFIG[currentWeek] : null;
@@ -728,10 +780,32 @@ function buildKBForm(dayKey, d) {
 
   var h = '<h2 style="font-size:16px;margin-bottom:4px">' + dayName + ' KB</h2>';
   h += '<p style="font-size:12px;color:var(--text2);margin-bottom:16px">' + (entries[0].SessionLabel || '') + '</p>';
+
+  // Session-level coach banner: pull metadata from the first entry that has overrides
+  var sessionCoachInfo = null;
+  for (var ei = 0; ei < entries.length; ei++) {
+    var e0 = entries[ei];
+    if (_hasOverride(e0.MovementOverride) || _hasOverride(e0.PlannedSetsRepsKgOverride)) {
+      sessionCoachInfo = {
+        _hasAnyOverride: true,
+        _reason: String(e0.OverrideReason || ''),
+        _by: String(e0.OverrideBy || ''),
+        _date: String(e0.OverrideDate || '')
+      };
+      break;
+    }
+  }
+  h += coachBannerHTML(sessionCoachInfo);
+
   h += '<div class="form-section"><h3>Date</h3><div class="form-row">' + fg('Date', 'kb-date', 'date', entries[0].Date || today()) + '</div></div>';
 
   entries.forEach(function(e, i) {
-    var planned = e.PlannedSetsRepsKg || '';
+    var kbOv = getOverride(e, [
+      ['Movement', 'MovementOverride'],
+      ['PlannedSetsRepsKg', 'PlannedSetsRepsKgOverride']
+    ]);
+    var movement = kbOv.Movement.value || '';
+    var planned = kbOv.PlannedSetsRepsKg.value || '';
     var numSets = parseSetsCount(planned);
     var savedSets = [];
     if (e.ActualSetData) {
@@ -741,15 +815,23 @@ function buildKBForm(dayKey, d) {
         savedSets = e.ActualSetData;
       }
     }
-    var movement = e.Movement || '';
     var isSwing = movement.indexOf('Swing') >= 0;
     var isTM = movement.indexOf('TM') >= 0 || movement.indexOf('Incline') >= 0;
     var isCarry = movement.indexOf('Carry') >= 0;
     var isWallBall = movement.indexOf('Wall Ball') >= 0;
 
     h += '<div class="movement-block">';
-    h += '<div class="mvmt-name">' + movement + '</div>';
-    h += '<div class="planned">Planned: ' + planned + '</div>';
+    h += '<div class="mvmt-name">' + movement + (kbOv.Movement.isOverride ? '<span class="coach-inline">📋 Updated</span>' : '') + '</div>';
+    var plannedDisplay = kbOv.PlannedSetsRepsKg.isOverride
+      ? '<span class="override-value">' + planned + '</span>'
+      : planned;
+    h += '<div class="planned">Planned: ' + plannedDisplay + '</div>';
+    if (kbOv._hasAnyOverride) {
+      var wasParts = [];
+      if (kbOv.Movement.isOverride) wasParts.push(kbOv.Movement.original);
+      if (kbOv.PlannedSetsRepsKg.isOverride) wasParts.push(kbOv.PlannedSetsRepsKg.original);
+      if (wasParts.length) h += '<div class="original-strike">Was: ' + wasParts.join(' &middot; ') + '</div>';
+    }
 
     if (isTM) {
       h += '<div class="form-row">';
@@ -794,14 +876,31 @@ function buildKBForm(dayKey, d) {
 
 function buildStationForm(d) {
   var entry = d.station || {};
-  var h = '<h2 style="font-size:16px;margin-bottom:4px">Wednesday &middot; ' + (entry.SessionType || 'Station') + '</h2>';
+  var stOv = getOverride(entry, [
+    ['SessionType', 'SessionTypeOverride'],
+    ['Stations', 'StationsOverride']  // virtual pair: original "Stations" doesn't exist as a field, but lets us treat StationsOverride uniformly
+  ]);
+  var effectiveSessionType = stOv.SessionType.value || 'Station';
+  var h = '<h2 style="font-size:16px;margin-bottom:4px">Wednesday &middot; ' + effectiveSessionType +
+          (stOv.SessionType.isOverride ? '<span class="coach-inline">📋 Updated</span>' : '') + '</h2>';
   h += '<p style="font-size:12px;color:var(--text2);margin-bottom:16px">' + (entry.Role || '') + '</p>';
+
+  // Coach banner
+  h += coachBannerHTML(stOv);
 
   h += '<div class="form-section"><h3>Date</h3><div class="form-row">' + fg('Date', 'st-date', 'date', entry.Date || today()) + '</div></div>';
 
-  // Session description (V6.1 planned content)
+  // Session description (V6.1 planned content) — with optional override
   var plan = WED_PLANNED[currentWeek];
-  if (plan && plan.description) {
+  if (stOv.SessionType.isOverride && stOv.SessionType.original) {
+    h += '<div class="original-strike" style="font-size:12px;margin-bottom:6px">Was: ' + stOv.SessionType.original + '</div>';
+  }
+  if (stOv.Stations.isOverride) {
+    h += '<div class="planned" style="font-size:13px;line-height:1.5;padding:10px 12px"><span class="override-value">Coach override: ' + stOv.Stations.value + '</span></div>';
+    if (plan && plan.description) {
+      h += '<div class="original-strike" style="padding:0 12px">Original session: ' + plan.description + '</div>';
+    }
+  } else if (plan && plan.description) {
     h += '<div class="planned" style="font-size:13px;line-height:1.5;padding:10px 12px">' + plan.description + '</div>';
   }
 
@@ -921,6 +1020,47 @@ function today() {
     String(d.getDate()).padStart(2, '0');
 }
 function val(id) { var el = document.getElementById(id); return el ? el.value : ''; }
+
+// --- Coach override helpers ---------------------------------------------------
+// Returns true if `v` is a non-empty override value (string with content).
+function _hasOverride(v) { return v !== undefined && v !== null && String(v).trim() !== ''; }
+
+// For a given entry and a list of [baseField, overrideField] pairs,
+// returns an object describing each field's effective value, original, and
+// whether it was overridden. Plus session-level metadata.
+//   getOverride(entry, [['PlannedDist', 'PlannedDistOverride'], ['TargetPace','TargetPaceOverride']])
+function getOverride(entry, fieldPairs) {
+  if (!entry) entry = {};
+  var result = { _hasAnyOverride: false, _reason: '', _by: '', _date: '' };
+  (fieldPairs || []).forEach(function(p) {
+    var base = p[0], ov = p[1];
+    var hasOv = _hasOverride(entry[ov]);
+    result[base] = {
+      value: hasOv ? entry[ov] : entry[base],
+      original: entry[base],
+      isOverride: hasOv
+    };
+    if (hasOv) result._hasAnyOverride = true;
+  });
+  if (result._hasAnyOverride) {
+    result._reason = String(entry.OverrideReason || '');
+    result._by = String(entry.OverrideBy || '');
+    result._date = String(entry.OverrideDate || '');
+  }
+  return result;
+}
+
+// Renders the yellow coach-update banner at the top of a form.
+// Returns empty string if no override metadata.
+function coachBannerHTML(ovInfo) {
+  if (!ovInfo || !ovInfo._hasAnyOverride) return '';
+  var parts = ['Coach update'];
+  if (ovInfo._date) parts.push(ovInfo._date);
+  if (ovInfo._by) parts.push(ovInfo._by);
+  var titleHTML = '📋 ' + parts.join(' · ');
+  var reasonHTML = ovInfo._reason ? '<div class="ch-reason">' + ovInfo._reason + '</div>' : '';
+  return '<div class="coach-banner"><div class="ch-title">' + titleHTML + '</div>' + reasonHTML + '</div>';
+}
 
 // ─── Draft auto-save ───────────────────────────────────────────────────────────
 function draftKey(context) { return 'draft_' + context; }
