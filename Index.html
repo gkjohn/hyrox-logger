@@ -468,7 +468,7 @@ if (IS_LOCAL) {
   };
 }
 
-var PROGRAM_START = new Date(2026, 3, 27); // Apr 27, 2026 (W1 Mon) — month is 0-indexed
+var PROGRAM_START = new Date(2026, 3, 27); // Apr 27, 2026 (W1 Mon) \u2014 month is 0-indexed
 function getCurrentWeek() {
   var msPerDay = 1000 * 60 * 60 * 24;
   var now = new Date();
@@ -821,7 +821,7 @@ function buildKBForm(dayKey, d) {
     var isWallBall = movement.indexOf('Wall Ball') >= 0;
 
     h += '<div class="movement-block">';
-    h += '<div class="mvmt-name">' + movement + (kbOv.Movement.isOverride ? '<span class="coach-inline">📋 Updated</span>' : '') + '</div>';
+    h += '<div class="mvmt-name">' + movement + (kbOv.Movement.isOverride ? '<span class="coach-inline">\ud83d\udccb Updated</span>' : '') + '</div>';
     var plannedDisplay = kbOv.PlannedSetsRepsKg.isOverride
       ? '<span class="override-value">' + planned + '</span>'
       : planned;
@@ -882,7 +882,7 @@ function buildStationForm(d) {
   ]);
   var effectiveSessionType = stOv.SessionType.value || 'Station';
   var h = '<h2 style="font-size:16px;margin-bottom:4px">Wednesday &middot; ' + effectiveSessionType +
-          (stOv.SessionType.isOverride ? '<span class="coach-inline">📋 Updated</span>' : '') + '</h2>';
+          (stOv.SessionType.isOverride ? '<span class="coach-inline">\ud83d\udccb Updated</span>' : '') + '</h2>';
   h += '<p style="font-size:12px;color:var(--text2);margin-bottom:16px">' + (entry.Role || '') + '</p>';
 
   // Coach banner
@@ -890,7 +890,7 @@ function buildStationForm(d) {
 
   h += '<div class="form-section"><h3>Date</h3><div class="form-row">' + fg('Date', 'st-date', 'date', entry.Date || today()) + '</div></div>';
 
-  // Session description (V6.1 planned content) — with optional override
+  // Session description (V6.1 planned content) \u2014 with optional override
   var plan = WED_PLANNED[currentWeek];
   if (stOv.SessionType.isOverride && stOv.SessionType.original) {
     h += '<div class="original-strike" style="font-size:12px;margin-bottom:6px">Was: ' + stOv.SessionType.original + '</div>';
@@ -1057,12 +1057,12 @@ function coachBannerHTML(ovInfo) {
   var parts = ['Coach update'];
   if (ovInfo._date) parts.push(ovInfo._date);
   if (ovInfo._by) parts.push(ovInfo._by);
-  var titleHTML = '📋 ' + parts.join(' · ');
+  var titleHTML = '\ud83d\udccb ' + parts.join(' \u00b7 ');
   var reasonHTML = ovInfo._reason ? '<div class="ch-reason">' + ovInfo._reason + '</div>' : '';
   return '<div class="coach-banner"><div class="ch-title">' + titleHTML + '</div>' + reasonHTML + '</div>';
 }
 
-// ─── Draft auto-save ───────────────────────────────────────────────────────────
+// \u2500\u2500\u2500 Draft auto-save \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 function draftKey(context) { return 'draft_' + context; }
 function saveDraft(context) {
   var fields = {};
