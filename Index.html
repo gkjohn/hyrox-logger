@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>Gautam's HYROX Logger [v6.1.7a]</title>
+  <title>Gautam's HYROX Logger [v6.1.7b]</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
   <style>
     :root {
@@ -135,7 +135,7 @@
 <div class="screen active" id="screen-week">
   <div class="header">
     <h1>Gautam's HYROX Logger</h1>
-    <p>v6.1.7a &middot; Race: Jul 26 &middot; Sub 2:00:00</p>
+    <p>v6.1.7b &middot; Race: Jul 26 &middot; Sub 2:00:00</p>
   </div>
   <div id="hrvBanner"></div>
   <div class="week-sel">
@@ -187,6 +187,16 @@
     <h1>Data</h1>
     <p>Manage your training data</p>
   </div>
+
+  <div class="form-section">
+    <h3>Apply Coach Update</h3>
+    <p style="font-size:12px;color:var(--text2);margin-bottom:10px">Paste the JSON block from your Coach Claude chat. Preview shows the diff. Apply writes the overrides to your Sheet.</p>
+    <textarea id="coach-paste" placeholder='{"author":"Claude Coach","reason":"...","overrides":[...]}' style="width:100%;min-height:120px;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-family:ui-monospace,Menlo,monospace;font-size:12px;resize:vertical;-webkit-appearance:none"></textarea>
+    <button class="btn btn-secondary" style="margin-top:10px" onclick="coachPreview()">Preview</button>
+    <button class="btn btn-primary" id="coach-apply-btn" style="margin-top:10px;display:none" onclick="coachApply()">Apply</button>
+    <div id="coach-result" style="margin-top:12px"></div>
+  </div>
+
   <button class="btn btn-secondary" onclick="runSetup()">Initialize Sheets (first time only)</button>
   <button class="btn btn-secondary" style="margin-top:10px" onclick="openSheet()">Open Google Sheet</button>
 </div>
@@ -460,12 +470,83 @@ if (IS_LOCAL) {
               cb(null);
             },
             setupSheets: function() { cb('done'); },
-            getSpreadsheetId: function() { cb('demo'); }
+            getSpreadsheetId: function() { cb('demo'); },
+            previewCoachOverrides: function(jsonStr) { cb(_localCoachOp(jsonStr, false)); },
+            applyCoachOverrides: function(jsonStr) { cb(_localCoachOp(jsonStr, true)); }
           };
         }
       };
     }
   };
+
+  // Local-shim coach op: validates and (optionally) writes to LOCAL_DATA.
+  // Mirrors the server-side logic in Code.gs but operates against the shim's
+  // localStorage rather than a real Sheet.
+  function _localCoachOp(jsonStr, apply) {
+    var payload;
+    try { payload = JSON.parse(jsonStr); } catch(e) { return { ok:false, error: 'json parse error: ' + e.message }; }
+    if (!payload.author) return { ok:false, error: 'missing field: author' };
+    if (!payload.reason) return { ok:false, error: 'missing field: reason' };
+    if (!Array.isArray(payload.overrides) || !payload.overrides.length) return { ok:false, error: 'missing or empty field: overrides' };
+    var allowed = {
+      RunLog:     ['PlannedDistOverride','TargetPaceOverride','HRCapOverride'],
+      KBLog:      ['MovementOverride','PlannedSetsRepsKgOverride'],
+      StationLog: ['SessionTypeOverride','StationsOverride']
+    };
+    var changes = [];
+    for (var oi = 0; oi < payload.overrides.length; oi++) {
+      var ov = payload.overrides[oi];
+      if (!ov.sheet || !allowed[ov.sheet]) return { ok:false, error: 'overrides['+oi+']: unknown sheet "' + ov.sheet + '"' };
+      if (!ov.match || !ov.set) return { ok:false, error: 'overrides['+oi+']: missing match or set' };
+      var setKeys = Object.keys(ov.set);
+      for (var sk = 0; sk < setKeys.length; sk++) {
+        if (allowed[ov.sheet].indexOf(setKeys[sk]) < 0) return { ok:false, error: 'overrides['+oi+']: cannot write "' + setKeys[sk] + '" in ' + ov.sheet };
+      }
+      // Locate key
+      var key = null, currentData = null;
+      if (ov.sheet === 'RunLog') {
+        key = 'run_' + ov.match.Week + '_' + ov.match.Day;
+      } else if (ov.sheet === 'KBLog') {
+        var kbW = V6_KB[ov.match.Week] || { mon:[], fri:[] };
+        var dayList = ov.match.Day === 'Monday' ? kbW.mon : kbW.fri;
+        var foundIdx = -1;
+        for (var ki = 0; ki < dayList.length; ki++) if (dayList[ki][0] === ov.match.Movement) { foundIdx = ki; break; }
+        if (foundIdx < 0) return { ok:false, error: 'overrides['+oi+']: no row for ' + JSON.stringify(ov.match) };
+        key = 'kb_' + ov.match.Week + '_' + ov.match.Day + '_' + foundIdx;
+      } else if (ov.sheet === 'StationLog') {
+        key = 'station_' + ov.match.Week;
+      }
+      currentData = LOCAL_DATA[key] || {};
+      var fields = setKeys.map(function(k) {
+        var origCol = k.replace(/Override$/, '');
+        var origVal = '';
+        if (ov.sheet === 'RunLog' && origCol === 'PlannedDist') { var r = V6_TUE[ov.match.Week]; origVal = ov.match.Day === 'Tuesday' ? r[2] : (ov.match.Day === 'Thursday' ? V6_THU[ov.match.Week] : V6_SAT[ov.match.Week][1]); }
+        else if (ov.sheet === 'RunLog' && origCol === 'TargetPace') { var r2 = V6_TUE[ov.match.Week]; origVal = ov.match.Day === 'Tuesday' ? r2[3] : ''; }
+        else if (ov.sheet === 'KBLog') {
+          var kbW2 = V6_KB[ov.match.Week]; var dl = ov.match.Day === 'Monday' ? kbW2.mon : kbW2.fri;
+          for (var di = 0; di < dl.length; di++) if (dl[di][0] === ov.match.Movement) {
+            if (origCol === 'Movement') origVal = dl[di][0]; else if (origCol === 'PlannedSetsRepsKg') origVal = dl[di][1];
+          }
+        }
+        else if (ov.sheet === 'StationLog' && origCol === 'SessionType') { origVal = (V6_STATIONS[ov.match.Week-1] || [])[1] || ''; }
+        return { column: k, oldOverride: String(currentData[k] || ''), original: String(origVal), newValue: String(ov.set[k]), isClearing: String(ov.set[k]).trim() === '' };
+      });
+      changes.push({ sheet: ov.sheet, match: ov.match, rowNum: 0, fields: fields, _key: key });
+    }
+    if (apply) {
+      var todayStr = today();
+      changes.forEach(function(c) {
+        var existing = LOCAL_DATA[c._key] || {};
+        c.fields.forEach(function(f) { existing[f.column] = f.newValue; });
+        existing.OverrideBy = payload.author;
+        existing.OverrideDate = todayStr;
+        existing.OverrideReason = payload.reason;
+        LOCAL_DATA[c._key] = existing;
+      });
+      localSave();
+    }
+    return { ok:true, author:payload.author, reason:payload.reason, appliedCount:changes.length, changes:changes, applied:apply };
+  }
 }
 
 var PROGRAM_START = new Date(2026, 3, 27); // Apr 27, 2026 (W1 Mon) \u2014 month is 0-indexed
@@ -1485,6 +1566,91 @@ function openSheet() {
   google.script.run.withSuccessHandler(function(id) {
     window.open('https://docs.google.com/spreadsheets/d/' + id, '_blank');
   }).withFailureHandler(function() {}).getSpreadsheetId();
+}
+
+// --- Coach Update: Preview + Apply -------------------------------------------
+var _coachPreviewedJSON = null; // stores the JSON string that was successfully previewed
+
+function _renderCoachError(msg) {
+  document.getElementById('coach-result').innerHTML =
+    '<div class="error-msg">' + (msg || 'Error') + '</div>';
+  document.getElementById('coach-apply-btn').style.display = 'none';
+  _coachPreviewedJSON = null;
+}
+
+function _renderCoachPreview(res, applied) {
+  var html = '';
+  var headLabel = applied ? 'Applied' : 'Preview';
+  var headColor = applied ? 'var(--green)' : 'var(--yellow)';
+  html += '<div class="coach-banner" style="border-color:' + (applied ? 'rgba(76,175,80,0.4)' : 'rgba(255,193,7,0.4)') + '">';
+  html += '<div class="ch-title" style="color:' + headColor + '">' + (applied ? '\u2713 Applied \u00b7 ' : '\ud83d\udccb ') + headLabel + ' \u00b7 ' + res.appliedCount + ' change' + (res.appliedCount === 1 ? '' : 's') + '</div>';
+  html += '<div class="ch-reason"><strong>By:</strong> ' + res.author + '<br><strong>Reason:</strong> ' + res.reason + '</div>';
+  html += '</div>';
+  res.changes.forEach(function(c) {
+    html += '<div style="background:var(--surface);border-radius:8px;padding:10px 12px;margin-bottom:8px;font-size:13px">';
+    var matchStr = Object.keys(c.match).map(function(k) { return k + '=' + c.match[k]; }).join(' \u00b7 ');
+    html += '<div style="font-weight:600;margin-bottom:6px">' + c.sheet + ' \u00b7 ' + matchStr + '</div>';
+    c.fields.forEach(function(f) {
+      var oldDisplay = f.oldOverride && f.oldOverride !== '' ? f.oldOverride : (f.original ? '(original) ' + f.original : '(empty)');
+      var newDisplay = f.isClearing ? '<em>cleared</em>' : f.newValue;
+      html += '<div style="font-size:12px;color:var(--text2);margin-bottom:2px">';
+      html += '<strong>' + f.column + ':</strong> ' + oldDisplay + ' \u2192 <span style="color:var(--yellow);font-weight:600">' + newDisplay + '</span>';
+      html += '</div>';
+    });
+    html += '</div>';
+  });
+  document.getElementById('coach-result').innerHTML = html;
+}
+
+function coachPreview() {
+  var jsonStr = val('coach-paste');
+  if (!jsonStr || jsonStr.trim() === '') {
+    _renderCoachError('Paste a coach update JSON first.');
+    return;
+  }
+  showLoading();
+  google.script.run.withSuccessHandler(function(res) {
+    hideLoading();
+    if (!res || !res.ok) {
+      _renderCoachError(res ? res.error : 'Unknown error');
+      return;
+    }
+    _renderCoachPreview(res, false);
+    _coachPreviewedJSON = jsonStr;
+    document.getElementById('coach-apply-btn').style.display = 'block';
+  }).withFailureHandler(function(e) {
+    hideLoading();
+    _renderCoachError(e.message || String(e));
+  }).previewCoachOverrides(jsonStr);
+}
+
+function coachApply() {
+  // Defensive: only apply the JSON that was previewed (prevents stale apply)
+  var jsonStr = val('coach-paste');
+  if (jsonStr !== _coachPreviewedJSON) {
+    _renderCoachError('JSON changed since preview. Click Preview again.');
+    return;
+  }
+  if (!confirm('Apply ' + (JSON.parse(_coachPreviewedJSON).overrides.length) + ' override(s) to the Sheet?')) return;
+  showLoading();
+  google.script.run.withSuccessHandler(function(res) {
+    hideLoading();
+    if (!res || !res.ok) {
+      _renderCoachError(res ? res.error : 'Unknown error');
+      return;
+    }
+    _renderCoachPreview(res, true);
+    showToast('Coach update applied');
+    document.getElementById('coach-paste').value = '';
+    document.getElementById('coach-apply-btn').style.display = 'none';
+    _coachPreviewedJSON = null;
+    // If currently viewing one of the affected weeks, refresh
+    var affectedWeeks = res.changes.map(function(c) { return parseInt(c.match.Week); });
+    if (affectedWeeks.indexOf(currentWeek) >= 0) loadWeek();
+  }).withFailureHandler(function(e) {
+    hideLoading();
+    _renderCoachError(e.message || String(e));
+  }).applyCoachOverrides(jsonStr);
 }
 
 loadWeek();

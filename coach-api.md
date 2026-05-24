@@ -1,242 +1,145 @@
 # HYROX Logger — Coach API Spec
 
-This document describes how a **Coach** (human or AI) can write structured
-revisions to the athlete's training plan stored in Google Sheets.
+This document describes how a **Coach** (human or AI) collaborates with
+the athlete to revise the training plan stored in the athlete's
+Google Sheet.
 
-The athlete logs actuals against the plan via the [HYROX Logger
-app](https://github.com/gkjohn/hyrox-logger). The plan itself lives in a
-Google Sheet (sheets: `Dashboard`, `RunLog`, `KBLog`, `StationLog`,
-`Benchmarks`, `HRVLog`). The Coach reads everything in the Sheet and writes
-**overrides** into dedicated columns. The app displays the original
-prescription with the override layered on top (struck-through original +
-new value + reason + date).
+The athlete uses the [HYROX Logger app](https://github.com/gkjohn/hyrox-logger)
+to log actuals against the plan. The plan itself lives in the Sheet
+(`Dashboard`, `RunLog`, `KBLog`, `StationLog`, `Benchmarks`, `HRVLog`).
+The Coach reads everything in the Sheet, decides on revisions, and
+emits a **structured JSON payload**. The athlete pastes that payload
+into the HYROX app, previews the diff, and clicks Apply.
 
-## Identity & access
+The app writes the overrides to dedicated `*Override` columns; the
+original prescription is preserved. The display layer surfaces the
+override with a yellow banner + struck-through original (see v6.1.7a).
 
-The Coach is expected to have **read-only Google Sheets access** (e.g.
-via Claude's MCP tooling). It reads athlete data freely but **cannot
-write to the Sheet directly**.
+## Why paste-and-apply (not direct write)
 
-For writes, the Coach calls the **HYROX logger's Apps Script web app
-endpoint** via HTTP POST. The Apps Script runs as the athlete (sheet
-owner) and applies the writes on the Coach's behalf. This is the only
-supported write path.
+Coach Claude — the typical AI coach — runs in the Claude chat
+interface with **read-only** Sheets access. It can't directly mutate
+the Sheet. The paste-and-apply pattern works regardless of what tools
+the Coach has, keeps the athlete in the loop (preview before apply),
+and needs no shared secrets or HTTP endpoints. One paste per coach
+review (usually weekly).
 
-- **Read path**: Direct Sheets API. Read any sheet, any column.
-- **Write path**: HTTPS POST to the Apps Script web app URL. Schema below.
-- **Author identity**: Coach includes `"author": "Claude Coach"` in the
-  request body; the endpoint writes this into `OverrideBy`.
+## Identity
 
-## Date convention
+- **Author**: Coach includes `"author"` in the JSON payload — written
+  to the `OverrideBy` column. Free text. Conventional values:
+  `"Claude Coach"` for the AI; the human coach's name otherwise.
+- **Date stamping**: The app stamps `OverrideDate` automatically with
+  today (in IST, the athlete's local timezone). Coach doesn't set it.
 
-- All dates in the sheet use `yyyy-MM-dd` (e.g. `2026-05-22`).
-- Timezone is the spreadsheet's configured timezone (Asia/Kolkata).
-- For dates being written via Apps Script or a script with `Utilities.formatDate`,
-  use the spreadsheet timezone, not UTC.
+## The JSON payload contract
 
-## Source of truth
+Coach emits a single JSON object in its chat response. The athlete
+copies the block (just the JSON, no surrounding text) and pastes it
+into the HYROX app's **Data → Apply Coach Update** panel.
 
-- **Planned values** (PlannedDist, TargetPace, HRCap, PlannedSetsRepsKg,
-  Movement) are populated by the app's `setupSheets()` and reflect the
-  V6.1 program. **Do not overwrite these directly.**
-- **Override values** (the `*Override` columns) are how the Coach makes
-  changes. Original planned values are preserved for audit and the
-  athlete can always see what changed.
-- **Actuals** (ActualDist, ActualTime, ActualSets, etc.) are the
-  athlete's logged results. **Do not write to these.**
-- **Skipped / SkipReason** are the athlete's own intentional skips. **Do
-  not write to these.** A coach who wants a session removed should use
-  `OverrideReason` + the appropriate override columns (e.g.
-  `PlannedDistOverride = "skip — coach-directed rest"`).
-
-## Sheet & column schema
-
-The columns marked **NEW** are added by the
-`migrateAddOverrideColumns()` Apps Script function and do not exist on
-older installs.
-
-### Sheet: `RunLog` — Tuesday / Thursday / Saturday running
-
-| Column | Type | Read/Write | Notes |
-|---|---|---|---|
-| Week | int | read | 1..13 |
-| Day | text | read | `Tuesday` / `Thursday` / `Saturday` |
-| Date | yyyy-MM-dd | read | Set by athlete when logging |
-| SessionType | text | read | e.g. `Easy Run`, `Fast 8-4-2s`, `5km TIME TRIAL` |
-| Role | text | read | `RECOVERY`, `HIGH COST`, `CALIBRATION` |
-| PlannedDist | text | read | e.g. `6.5km easy`. Original program prescription. |
-| TargetPace | text | read | e.g. `5:00-5:30/km` |
-| HRCap | int or text | read | e.g. `148` |
-| ActualDist..MaxHR..Notes | various | read only | Athlete logs |
-| Skipped, SkipReason | text | **do not write** | Athlete's own skips |
-| **PlannedDistOverride** | text | write | NEW. Replaces PlannedDist for display. |
-| **TargetPaceOverride** | text | write | NEW. Replaces TargetPace for display. |
-| **HRCapOverride** | int or text | write | NEW. Replaces HRCap for display. |
-| **OverrideBy** | text | write | NEW. e.g. `"Claude Coach"`. |
-| **OverrideDate** | yyyy-MM-dd | write | NEW. Date the override was set. |
-| **OverrideReason** | text | write | NEW. 1–2 sentences. Why this change? |
-
-**Row identification**: a unique row in RunLog is `(Week, Day)`.
-
-### Sheet: `KBLog` — Monday / Friday KB sessions
-
-| Column | Type | Read/Write | Notes |
-|---|---|---|---|
-| Week | int | read | |
-| Day | text | read | `Monday` / `Friday` |
-| Date | yyyy-MM-dd | read | |
-| Role | text | read | `SUPPORT` / `ACCESSORY` |
-| SessionLabel | text | read | e.g. `Foundation - Mon KB` |
-| Movement | text | read | e.g. `2H Swing`, `KB Goblet Squat`, `TGU`. **One row per movement.** |
-| PlannedSetsRepsKg | text | read | e.g. `10×10 @ 24kg`, `3×6e @ 20-24kg` |
-| ActualSets..Notes | various | read only | Athlete logs |
-| Skipped, SkipReason | text | **do not write** | |
-| **MovementOverride** | text | write | NEW. Swap the movement entirely. e.g. `2H Swing` to replace `1H Swing`. |
-| **PlannedSetsRepsKgOverride** | text | write | NEW. e.g. `5×8 @ 24kg`. |
-| **OverrideBy** | text | write | NEW. |
-| **OverrideDate** | yyyy-MM-dd | write | NEW. |
-| **OverrideReason** | text | write | NEW. Applies to all overrides on this row. |
-
-**Row identification**: a unique row in KBLog is `(Week, Day, Movement)` —
-or `(Week, Day, row position in the day's session)` if the same movement
-appears twice on the same day (rare). When writing a Movement override,
-preserve the original Movement column — only set `MovementOverride`.
-
-### Sheet: `StationLog` — Wednesday stations
-
-| Column | Type | Read/Write | Notes |
-|---|---|---|---|
-| Week | int | read | |
-| Date | yyyy-MM-dd | read | |
-| SessionType | text | read | e.g. `⭐ Benchmark TT + Sled Pull Race Load` |
-| Role | text | read | `RECOVERY` / `SUPPORT` / `HIGH COST` / `SIM` |
-| SkiErg..WallBalls..Notes | various | read only | Athlete logs |
-| SledPullRaceLoad, SledPullTimes | various | read only | |
-| Skipped, SkipReason | text | **do not write** | |
-| **SessionTypeOverride** | text | write | NEW. Replace the whole session, e.g. `Easy Run 7km`. |
-| **StationsOverride** | text or JSON | write | NEW. Either free-text description (`"SkiErg 2×200m easy, no sled pull this week"`) or JSON map (`{"SkiErg":"2×200m easy","SledPull":"skip","Row":"2×200m easy"}`). Free-text is fine. |
-| **OverrideBy** | text | write | NEW. |
-| **OverrideDate** | yyyy-MM-dd | write | NEW. |
-| **OverrideReason** | text | write | NEW. |
-
-**Row identification**: a unique row in StationLog is `Week`.
-
-### Sheets NOT to write to
-
-- `Dashboard` — read-only summary; updated by the app.
-- `Benchmarks` — athlete's TT data.
-- `HRVLog` — daily HRV data. The Coach SHOULD read this to inform
-  decisions.
-
-## Examples
-
-### Example 1: Tuesday tempo pace adjustment
-
-Coach Claude notices HRV has dipped after W4 hard week. Wants W5
-Tuesday's Rolling 400s prescribed at 6:00-6:30/km instead of the
-original 5:30-6:00/km.
-
-**Locate row**: RunLog where `Week == 5` and `Day == "Tuesday"`.
-
-**Write these columns**:
-
-```
-TargetPaceOverride  = "6:00-6:30/km"
-OverrideBy          = "Claude Coach"
-OverrideDate        = "2026-05-22"
-OverrideReason      = "Avg HRV 23ms (down from 28ms baseline). Back off pace 30 sec/km to keep this an aerobic stim rather than threshold."
-```
-
-Leave all other columns alone. `TargetPace` still reads `5:30-6:00/km`.
-`PlannedDist` still reads `6×400m + 200m jog (6km)`.
-
-### Example 2: Swap a KB exercise
-
-Left wrist flared up. Replace W7 Monday's `1H Swing` with `2H Swing`
-at the same volume.
-
-**Locate row**: KBLog where `Week == 7` and `Day == "Monday"` and
-`Movement == "1H Swing"`.
-
-**Write**:
-
-```
-MovementOverride            = "2H Swing"
-PlannedSetsRepsKgOverride   = "5×8 @ 24kg"
-OverrideBy                  = "Claude Coach"
-OverrideDate                = "2026-05-22"
-OverrideReason              = "Wrist soreness reported on May 21. Substitute bilateral swing to reduce unilateral strain. Volume preserved."
-```
-
-### Example 3: Reduce KB volume only
-
-Carrying cumulative load — drop a set from W6 Monday's `KB Press`.
-
-```
-PlannedSetsRepsKgOverride   = "2×8 @ 24kg"
-OverrideBy                  = "Claude Coach"
-OverrideDate                = "2026-05-22"
-OverrideReason              = "Cumulative shoulder load high after W5 ownership block. Drop one set, hold weight."
-```
-
-Leave `MovementOverride` empty.
-
-### Example 4: Reroute the whole Wednesday
-
-W8 Hard Brick is too aggressive given current Oura readiness.
-Substitute with an easy outdoor run.
-
-```
-SessionTypeOverride = "Easy Run 7km (Wed substitute)"
-StationsOverride    = "skip stations this week"
-OverrideBy          = "Claude Coach"
-OverrideDate        = "2026-05-22"
-OverrideReason      = "3 consecutive nights of readiness below 70. Skip the hard brick, do an easy run instead. Resume hard sessions when readiness > 75 for 2 nights."
-```
-
-### Example 5: Clearing an override
-
-Coach reverses a previous decision. Just set the override field(s) back
-to empty string `""`. The app falls back to the original PlannedX value.
-
-## Write API — HTTPS POST to the Apps Script endpoint
-
-### Endpoint
-
-```
-POST https://script.google.com/macros/s/<DEPLOYMENT_ID>/exec
-Content-Type: application/json
-```
-
-The deployment URL is the same one the athlete uses for the logger
-web app. The endpoint is shared between the human-facing UI (`doGet`)
-and the Coach API (`doPost`). Athletes share this URL with their Coach.
-
-### Authentication
-
-Each request must include a shared secret token. The athlete sets the
-token once in Apps Script's `PropertiesService` (instructions in repo
-README). The token is passed in the request body, not a header (Apps
-Script `doPost` doesn't see custom headers reliably).
-
-### Request body
+### Minimal shape
 
 ```json
 {
-  "token": "<shared-secret>",
   "author": "Claude Coach",
-  "reason": "HRV dipped after W5 — back off pace this week. See HRVLog rows for May 19-22.",
+  "reason": "Why these changes — 1-3 sentences. Shown to athlete in every banner.",
+  "overrides": [
+    {
+      "sheet": "<RunLog | KBLog | StationLog>",
+      "match": { "<keyColumn>": "<value>", ... },
+      "set":   { "<*Override column>": "<new value>", ... }
+    }
+  ]
+}
+```
+
+### Field semantics
+
+- `author` (string, required): goes into `OverrideBy` for every row
+  touched.
+- `reason` (string, required): goes into `OverrideReason` for every
+  row touched. One reason covers the whole payload — group thematically
+  related changes into a single payload, send separate payloads if
+  reasons differ.
+- `overrides` (array, required): one entry per row being modified.
+
+### Each override entry
+
+- `sheet`: exactly one of `"RunLog"`, `"KBLog"`, `"StationLog"`. Other
+  sheet names rejected.
+- `match`: object whose keys are column names used to locate the
+  unique row. Required keys by sheet:
+  - **RunLog**: `Week` (integer 1–13), `Day` (`"Tuesday"` /
+    `"Thursday"` / `"Saturday"`).
+  - **KBLog**: `Week`, `Day` (`"Monday"` / `"Friday"`), `Movement`
+    (the original movement name as written in the sheet).
+  - **StationLog**: `Week`.
+
+  The match must locate **exactly one row**. Zero or multiple matches
+  is rejected with an error naming the bad match.
+
+- `set`: object whose keys are column names to write. Only the
+  whitelisted `*Override` columns are accepted. Writes to other
+  columns (`Actual*`, `Skipped*`, originals like `PlannedDist`,
+  `Movement`, `SessionType`) are **rejected wholesale** — the payload
+  is rejected without writes.
+
+## Whitelisted columns Coach can set
+
+These are the only columns acceptable in `set`. The app stamps
+`OverrideBy`, `OverrideDate`, `OverrideReason` automatically — do not
+include them.
+
+### RunLog
+- `PlannedDistOverride` — text (e.g. `"7km easy"`)
+- `TargetPaceOverride` — text (e.g. `"6:40/km"`)
+- `HRCapOverride` — number or text (e.g. `150`)
+
+### KBLog
+- `MovementOverride` — text (swap the movement, e.g. `"2H Swing"` to
+  replace `"1H Swing"`)
+- `PlannedSetsRepsKgOverride` — text (e.g. `"5x8 @ 24kg"`). Use `x`
+  not `×` for compatibility.
+
+### StationLog
+- `SessionTypeOverride` — text (e.g. `"Easy Run 7km (Wed substitute)"`)
+- `StationsOverride` — text describing changed stations, free form
+  (e.g. `"skip stations this week"` or
+  `"SkiErg 2x200m easy, Row 2x200m easy, no sled"`)
+
+## Worked examples
+
+### Example 1 — Tuesday pace adjustment
+
+HRV trending down; back off W5 Tuesday rolling 400s pace.
+
+```json
+{
+  "author": "Claude Coach",
+  "reason": "Avg HRV 23ms (down from 28ms baseline last week). Back off pace 30 sec/km to keep this aerobic rather than threshold. Resume original targets next week if HRV recovers.",
   "overrides": [
     {
       "sheet": "RunLog",
-      "match": {"Week": 5, "Day": "Tuesday"},
-      "set": {
-        "TargetPaceOverride": "6:00-6:30/km"
-      }
-    },
+      "match": { "Week": 5, "Day": "Tuesday" },
+      "set": { "TargetPaceOverride": "6:00-6:30/km" }
+    }
+  ]
+}
+```
+
+### Example 2 — KB exercise swap
+
+Left wrist sore; substitute W7 Monday 1H Swing with bilateral 2H Swing.
+
+```json
+{
+  "author": "Claude Coach",
+  "reason": "Wrist soreness reported May 21. Substitute bilateral swing to reduce unilateral strain. Total volume preserved.",
+  "overrides": [
     {
       "sheet": "KBLog",
-      "match": {"Week": 7, "Day": "Monday", "Movement": "1H Swing"},
+      "match": { "Week": 7, "Day": "Monday", "Movement": "1H Swing" },
       "set": {
         "MovementOverride": "2H Swing",
         "PlannedSetsRepsKgOverride": "5x8 @ 24kg"
@@ -246,135 +149,157 @@ Script `doPost` doesn't see custom headers reliably).
 }
 ```
 
-**Field semantics:**
+### Example 3 — Whole-Wednesday reroute
 
-- `token` (string, required): shared secret. Request rejected with 401
-  if missing/wrong.
-- `author` (string, required): goes into the `OverrideBy` column for
-  every row touched in this request. Free text.
-- `reason` (string, required): goes into the `OverrideReason` column
-  for every row touched. A single reason covers all overrides in the
-  request — keep changes thematically grouped per request.
-- `overrides` (array): one entry per row being modified.
-  - `sheet`: one of `"RunLog"`, `"KBLog"`, `"StationLog"`. Other
-    sheets rejected.
-  - `match`: object whose keys are column names in that sheet, used
-    to find the unique row. RunLog needs `Week` + `Day`; KBLog needs
-    `Week` + `Day` + `Movement`; StationLog needs `Week`.
-  - `set`: object whose keys are column names to write. Only
-    `*Override` columns are accepted; writes to `Actual*`,
-    `Skipped*`, original `Planned*` / `Movement` / `SessionType`
-    are rejected.
-
-The endpoint stamps `OverrideBy`, `OverrideDate` (today in IST), and
-`OverrideReason` automatically on every row touched — the Coach
-doesn't need to set these explicitly.
-
-### Response
+W8 Hard Brick out of bounds given readiness; substitute easy run.
 
 ```json
 {
-  "status": "ok",
-  "applied": 2,
-  "rows": [
-    {"sheet": "RunLog", "match": {"Week": 5, "Day": "Tuesday"}, "row": 17},
-    {"sheet": "KBLog", "match": {"Week": 7, "Day": "Monday", "Movement": "1H Swing"}, "row": 64}
+  "author": "Claude Coach",
+  "reason": "Oura readiness below 70 for 3 consecutive nights. Skip the hard brick — do an easy outdoor run instead. Resume hard sessions when readiness > 75 for 2 nights.",
+  "overrides": [
+    {
+      "sheet": "StationLog",
+      "match": { "Week": 8 },
+      "set": {
+        "SessionTypeOverride": "Easy Run 7km (Wed substitute)",
+        "StationsOverride": "skip stations this week"
+      }
+    }
   ]
 }
 ```
 
-Or on error:
+### Example 4 — Multiple changes in one payload
+
+Coach reviews a week and adjusts two sessions for the same underlying
+reason. Group both in one payload (same reason applies).
 
 ```json
 {
-  "status": "error",
-  "error": "row not found for match {Week: 99, Day: Tuesday} in RunLog",
-  "applied": 0
+  "author": "Claude Coach",
+  "reason": "Recovery markers soft — back off W5 quality, hold KB at last week's loads instead of progressing.",
+  "overrides": [
+    {
+      "sheet": "RunLog",
+      "match": { "Week": 5, "Day": "Tuesday" },
+      "set": { "TargetPaceOverride": "6:00-6:30/km" }
+    },
+    {
+      "sheet": "KBLog",
+      "match": { "Week": 5, "Day": "Monday", "Movement": "KB Press" },
+      "set": { "PlannedSetsRepsKgOverride": "3x6e @ 20kg" }
+    },
+    {
+      "sheet": "KBLog",
+      "match": { "Week": 5, "Day": "Monday", "Movement": "KB Row" },
+      "set": { "PlannedSetsRepsKgOverride": "3x6e @ 24-28kg" }
+    }
+  ]
 }
 ```
 
-If any single override fails, the whole request is rejected (no
-partial writes).
+### Example 5 — Clearing a previous override
 
-### Clearing overrides
-
-Send `set` with empty-string values:
+To revert, set the override field to an empty string. Use the reason
+to document the reversal.
 
 ```json
 {
-  "sheet": "RunLog",
-  "match": {"Week": 5, "Day": "Tuesday"},
-  "set": {"TargetPaceOverride": ""}
+  "author": "Claude Coach",
+  "reason": "HRV recovered (avg 27ms over last 3 nights). Reverting Tuesday pace back to original.",
+  "overrides": [
+    {
+      "sheet": "RunLog",
+      "match": { "Week": 5, "Day": "Tuesday" },
+      "set": { "TargetPaceOverride": "" }
+    }
+  ]
 }
 ```
 
-Use `reason: "Reverting earlier override — HRV recovered"` (or
-similar) for the audit trail.
+## What the athlete does
 
-### Idempotency
+1. Asks Coach Claude something like: *"Review my last 7 days. Any
+   prescription changes for next week? Output as a JSON override block."*
+2. Coach Claude reads the Sheet + Strava + Oura, reasons, emits the
+   JSON in chat.
+3. Athlete copies the JSON.
+4. Athlete opens the HYROX app → **Data** tab → **Apply Coach Update**
+   panel → pastes the JSON → taps **Preview**.
+5. Preview expands to a plain-English diff (rows + columns that will
+   change, old → new). Athlete sanity-checks.
+6. Athlete taps **Apply**. Overrides land in the Sheet. An entry is
+   recorded in the `CoachLog` sheet for audit.
+7. Affected session cards in the Week view immediately show the
+   yellow Coach badge and the override is visible in the form.
 
-Sending the same request twice is safe — the endpoint just rewrites
-the same values. Same `OverrideDate` if same day. If you need to
-detect "is this already applied?", read the Sheet first (which Coach
-already has read access to).
+## Validation Coach should anticipate
 
-### Locating cells by header, not index
+The app validates before applying. These all reject the entire
+payload (no partial writes):
 
-Internally the endpoint uses `headers.indexOf("ColumnName")` to find
-columns, so the Coach should never need to know which column index
-holds `TargetPaceOverride`. Just reference columns by name.
+- JSON doesn't parse → `"json parse error: <message>"`
+- Missing required top-level keys → `"missing field: <name>"`
+- `sheet` not in allowlist → `"unknown sheet: <value>"`
+- `match` keys missing or unknown → `"match needs: <keys>"`
+- `match` finds zero rows → `"no row found for match: <criteria>"`
+- `match` finds multiple rows → `"match ambiguous (N rows): <criteria>"`
+- `set` references a non-override column → `"cannot write to '<col>' — only *Override columns are writable"`
+- `set` empty → `"nothing to set"`
 
-### Rate limits
+If the athlete pastes an invalid payload, the Preview shows the error
+verbatim. They can ask Coach Claude to fix and try again.
 
-Apps Script has soft limits (~20k API calls/day, 6 min per execution).
-For this use case (one Coach making a few writes per week), the limit
-is not a concern. Avoid bulk-rewriting the whole program in a single
-request — split by theme.
+## Audit log
 
-## App display behaviour (for athlete reference)
+Every applied payload appends a row to the `CoachLog` sheet:
 
-When the app loads a session:
+| Timestamp | Author | Reason | AppliedCount | RowsAffected | PayloadJSON |
+|---|---|---|---|---|---|
+| 2026-05-22 18:34:01 | Claude Coach | HRV down — back off pace | 1 | RunLog W5 Tuesday | `{...full JSON...}` |
 
-- If any `*Override` column is non-empty, that value is shown as the
-  primary display value.
-- The original planned value is shown beneath, struck-through and in
-  muted grey.
-- The session card on the Week view shows a `📋 Coach update (Date)`
-  badge.
-- The form view shows a yellow-tinted panel above the inputs with the
-  `OverrideReason` text.
-- Setting an override does NOT affect the athlete's actuals or skip
-  flags.
+This is just an audit trail — the app doesn't read from it. Useful
+for retrospective review ("when did we change the W5 pace, and why?").
 
-## Invariants the Coach must respect
+## Coach Claude prompt template
+
+Suggested system / message prompt the athlete can drop into a coach
+chat to get well-formed JSON output:
+
+> You are my training coach for the HYROX 13-week V6.1 program. You
+> have read access to my training Sheet, Strava, and Oura.
+>
+> When I ask for recommendations, you will:
+> 1. Read the most recent week's actuals + HRV + Oura data.
+> 2. Identify any prescription changes worth making — adjust paces,
+>    swap movements, reduce volume, or skip sessions.
+> 3. Emit your recommendations as a single JSON code block matching
+>    the schema in `coach-api.md` (sheet, match, set; whitelisted
+>    *Override columns only; one shared reason per payload).
+> 4. Briefly explain what you changed and why in prose above the
+>    JSON block, but the JSON itself should be standalone and
+>    paste-ready.
+>
+> Don't include `OverrideBy`, `OverrideDate`, or `OverrideReason` in
+> `set` — those are stamped automatically.
+
+## Invariants Coach must respect
 
 1. Never write to `Actual*` columns.
 2. Never write to `Skipped` or `SkipReason`.
-3. Never modify the original `PlannedX` / `Movement` / `SessionType`
-   values — only their `*Override` siblings.
-4. Always set `OverrideBy`, `OverrideDate`, `OverrideReason` when
-   setting any override field. Empty reasons aren't useful.
-5. Clearing overrides is done by setting the override fields back to
-   `""` (and ideally setting `OverrideDate` + `OverrideReason` to
-   document the reversal).
-6. The HRVLog, Dashboard, Benchmarks sheets are out of scope for writes.
-   Read freely.
+3. Never write to original `Planned*` / `Movement` / `SessionType`
+   columns — only their `*Override` siblings.
+4. Don't include `OverrideBy` / `OverrideDate` / `OverrideReason` in
+   `set` — the app stamps them.
+5. Group changes that share a reason into a single payload. Split
+   payloads when reasons differ — preserves audit-log clarity.
+6. The HRVLog, Dashboard, Benchmarks sheets are read-only to the
+   Coach API.
 
 ## Versioning
 
-This spec applies to **app v6.1.7 and above** — when both the column
-migration AND the `doPost` write endpoint are deployed. Earlier
-versions don't have the override columns or the write endpoint;
-attempts to call the API will return 404 or no-op.
-
-## Athlete setup checklist (one-time, for v6.1.7)
-
-1. Run `migrateAddOverrideColumns()` once from the Apps Script editor.
-2. Generate a shared-secret token (any random string, e.g.
-   `openssl rand -hex 16`).
-3. In Apps Script editor → Project Settings → Script Properties → add
-   `COACH_TOKEN` = `<your-token>`.
-4. Re-deploy as a new version (`Deploy → Manage deployments → New
-   version`).
-5. Share the deployment URL + token with the Coach via a secure
-   channel.
+This spec applies to **app v6.1.7b and above** — when the override
+columns, the display layer, and the paste-and-apply panel are all
+live. v6.1.7a has the display layer but no apply-from-UI, so writes
+have to be typed into cells manually.

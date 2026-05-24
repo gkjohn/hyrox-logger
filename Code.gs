@@ -1,10 +1,10 @@
-// HYROX 13-Week V6.1 Training Logger | App v6.1.6 \u2014 Google Apps Script Backend
+// HYROX 13-Week V6.1 Training Logger | App v6.1.7b \u2014 Google Apps Script Backend
 // Race: July 26, 2026 \u2014 Target: Sub 2:00:00
 // Paste into Extensions -> Apps Script in your Google Sheet
 
 function doGet() {
   return HtmlService.createHtmlOutputFromFile('Index')
-    .setTitle("Gautam's HYROX Logger [v6.1.6]")
+    .setTitle("Gautam's HYROX Logger [v6.1.7b]")
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
     .addMetaTag('viewport', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no');
 }
@@ -82,7 +82,28 @@ function setupSheets() {
     hrv.getRange(1, 1, 1, 6).setFontWeight('bold');
   }
 
+  // CoachLog (NEW in v6.1.7b)
+  var coach = getOrCreateSheet(ss, 'CoachLog');
+  if (coach.getLastRow() < 1) {
+    coach.getRange(1, 1, 1, 6).setValues([['Timestamp','Author','Reason','AppliedCount','RowsAffected','PayloadJSON']]);
+    coach.getRange(1, 1, 1, 6).setFontWeight('bold');
+  }
+
   return 'Setup complete';
+}
+
+// One-time migration: adds CoachLog sheet for audit trail of applied coach updates.
+// Safe to run multiple times -- no-op if sheet already exists with headers.
+function migrateAddCoachLog() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName('CoachLog');
+  if (sheet && sheet.getLastRow() >= 1) {
+    return 'No changes -- CoachLog already exists';
+  }
+  if (!sheet) sheet = ss.insertSheet('CoachLog');
+  sheet.getRange(1, 1, 1, 6).setValues([['Timestamp','Author','Reason','AppliedCount','RowsAffected','PayloadJSON']]);
+  sheet.getRange(1, 1, 1, 6).setFontWeight('bold');
+  return 'Added: CoachLog sheet with 6 columns';
 }
 
 function getOrCreateSheet(ss, name) {
@@ -664,4 +685,197 @@ function saveBenchmark(rowNum, data) {
     if (col >= 0) sheet.getRange(rowNum, col + 1).setValue(data[key]);
   }
   return 'saved';
+}
+
+// --- Coach API: paste-and-apply override flow ---------------------------------
+// See coach-api.md for the JSON contract.
+
+var ALLOWED_SHEETS = ['RunLog', 'KBLog', 'StationLog'];
+
+// Whitelist of override columns by sheet. The Coach can ONLY write these.
+var ALLOWED_OVERRIDE_COLS = {
+  RunLog:     ['PlannedDistOverride', 'TargetPaceOverride', 'HRCapOverride'],
+  KBLog:      ['MovementOverride', 'PlannedSetsRepsKgOverride'],
+  StationLog: ['SessionTypeOverride', 'StationsOverride']
+};
+
+// Required match keys per sheet.
+var MATCH_KEYS = {
+  RunLog:     ['Week', 'Day'],
+  KBLog:      ['Week', 'Day', 'Movement'],
+  StationLog: ['Week']
+};
+
+// Validates a parsed payload. Returns null on success or an error string.
+// Also populates a `_resolved` array on each override entry with row info
+// (sheet name, row number, current values for cols being changed).
+function _validateCoachPayload(payload) {
+  if (!payload || typeof payload !== 'object') return 'payload must be a JSON object';
+  if (!payload.author || typeof payload.author !== 'string') return 'missing field: author';
+  if (!payload.reason || typeof payload.reason !== 'string') return 'missing field: reason';
+  if (!Array.isArray(payload.overrides) || payload.overrides.length === 0) return 'missing or empty field: overrides';
+
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+
+  for (var oi = 0; oi < payload.overrides.length; oi++) {
+    var ov = payload.overrides[oi];
+    var label = 'overrides[' + oi + ']';
+    if (!ov || typeof ov !== 'object') return label + ': must be an object';
+    if (!ov.sheet) return label + ': missing sheet';
+    if (ALLOWED_SHEETS.indexOf(ov.sheet) < 0) return label + ': unknown sheet "' + ov.sheet + '" -- allowed: ' + ALLOWED_SHEETS.join(', ');
+    if (!ov.match || typeof ov.match !== 'object') return label + ': missing match';
+    if (!ov.set || typeof ov.set !== 'object') return label + ': missing set';
+
+    // Match keys
+    var requiredKeys = MATCH_KEYS[ov.sheet];
+    for (var ki = 0; ki < requiredKeys.length; ki++) {
+      var k = requiredKeys[ki];
+      if (!(k in ov.match)) return label + ': match needs key "' + k + '" for sheet ' + ov.sheet;
+    }
+
+    // Set keys whitelist
+    var allowedCols = ALLOWED_OVERRIDE_COLS[ov.sheet];
+    var setKeys = Object.keys(ov.set);
+    if (setKeys.length === 0) return label + ': set is empty';
+    for (var si = 0; si < setKeys.length; si++) {
+      var sk = setKeys[si];
+      if (allowedCols.indexOf(sk) < 0) {
+        return label + ': cannot write to "' + sk + '" in ' + ov.sheet + ' -- allowed columns: ' + allowedCols.join(', ');
+      }
+    }
+
+    // Locate the row
+    var sheet = ss.getSheetByName(ov.sheet);
+    if (!sheet) return label + ': sheet "' + ov.sheet + '" not found in spreadsheet';
+    var data = sheet.getDataRange().getValues();
+    var headers = data[0];
+    var matchingRows = [];
+    for (var ri = 1; ri < data.length; ri++) {
+      var allMatch = true;
+      for (var mk in ov.match) {
+        var col = headers.indexOf(mk);
+        if (col < 0) { allMatch = false; break; }
+        var cell = data[ri][col];
+        var want = ov.match[mk];
+        // Loose-equal so number 5 matches string "5"
+        if (String(cell).trim() !== String(want).trim()) { allMatch = false; break; }
+      }
+      if (allMatch) matchingRows.push(ri + 1); // 1-indexed row number
+    }
+    if (matchingRows.length === 0) return label + ': no row found for match ' + JSON.stringify(ov.match);
+    if (matchingRows.length > 1) return label + ': match ambiguous (' + matchingRows.length + ' rows) for ' + JSON.stringify(ov.match);
+
+    // Record resolution for downstream apply/preview
+    var rowNum = matchingRows[0];
+    var current = {};
+    setKeys.forEach(function(sk) {
+      var col = headers.indexOf(sk);
+      current[sk] = col >= 0 ? data[rowNum - 1][col] : '';
+      // Also capture the original (non-override) value for preview
+      var baseCol = sk.replace(/Override$/, '');
+      var baseIdx = headers.indexOf(baseCol);
+      current['_original_' + sk] = baseIdx >= 0 ? data[rowNum - 1][baseIdx] : '';
+    });
+    ov._resolved = { sheetName: ov.sheet, rowNum: rowNum, headers: headers, current: current };
+  }
+  return null;
+}
+
+// Preview: returns a structured diff without writing anything.
+// Frontend uses this to populate the "Preview" UI before Apply is enabled.
+function previewCoachOverrides(jsonStr) {
+  var payload;
+  try { payload = JSON.parse(jsonStr); } catch(e) {
+    return { ok: false, error: 'json parse error: ' + e.message };
+  }
+  var err = _validateCoachPayload(payload);
+  if (err) return { ok: false, error: err };
+
+  var changes = payload.overrides.map(function(ov) {
+    var setKeys = Object.keys(ov.set);
+    var fieldDiffs = setKeys.map(function(k) {
+      var oldVal = ov._resolved.current[k];
+      var origVal = ov._resolved.current['_original_' + k];
+      var newVal = ov.set[k];
+      return {
+        column: k,
+        oldOverride: String(oldVal || ''),
+        original: String(origVal || ''),
+        newValue: String(newVal),
+        isClearing: String(newVal).trim() === ''
+      };
+    });
+    return {
+      sheet: ov.sheet,
+      match: ov.match,
+      rowNum: ov._resolved.rowNum,
+      fields: fieldDiffs
+    };
+  });
+
+  return {
+    ok: true,
+    author: payload.author,
+    reason: payload.reason,
+    appliedCount: changes.length,
+    changes: changes
+  };
+}
+
+// Apply: validates again, writes the overrides, stamps metadata, appends to CoachLog.
+// Returns same shape as preview, plus { applied: true }.
+function applyCoachOverrides(jsonStr) {
+  var payload;
+  try { payload = JSON.parse(jsonStr); } catch(e) {
+    return { ok: false, error: 'json parse error: ' + e.message };
+  }
+  var err = _validateCoachPayload(payload);
+  if (err) return { ok: false, error: err };
+
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var tz = ss.getSpreadsheetTimeZone();
+  var todayStr = Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd');
+  var timestampStr = Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd HH:mm:ss');
+  var summaryParts = [];
+
+  payload.overrides.forEach(function(ov) {
+    var sheet = ss.getSheetByName(ov.sheet);
+    var headers = ov._resolved.headers;
+    var rowNum = ov._resolved.rowNum;
+
+    // Write the override columns
+    Object.keys(ov.set).forEach(function(k) {
+      var col = headers.indexOf(k);
+      if (col >= 0) sheet.getRange(rowNum, col + 1).setValue(ov.set[k]);
+    });
+    // Stamp metadata
+    var byCol = headers.indexOf('OverrideBy');
+    var dateCol = headers.indexOf('OverrideDate');
+    var reasonCol = headers.indexOf('OverrideReason');
+    if (byCol >= 0) sheet.getRange(rowNum, byCol + 1).setValue(payload.author);
+    if (dateCol >= 0) sheet.getRange(rowNum, dateCol + 1).setValue(todayStr);
+    if (reasonCol >= 0) sheet.getRange(rowNum, reasonCol + 1).setValue(payload.reason);
+
+    // Build a summary string for the audit log
+    var matchSummary = Object.keys(ov.match).map(function(k) { return k + '=' + ov.match[k]; }).join(' ');
+    summaryParts.push(ov.sheet + ' [' + matchSummary + ']');
+  });
+
+  // Append to CoachLog
+  var coachSheet = ss.getSheetByName('CoachLog');
+  if (coachSheet) {
+    coachSheet.appendRow([
+      timestampStr,
+      payload.author,
+      payload.reason,
+      payload.overrides.length,
+      summaryParts.join(' | '),
+      jsonStr
+    ]);
+  }
+
+  // Return same preview shape with applied:true
+  var result = previewCoachOverrides(jsonStr);
+  result.applied = true;
+  return result;
 }
